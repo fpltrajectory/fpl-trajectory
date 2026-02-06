@@ -1,101 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <style>
-    #cold-start-message {
-        position: fixed;
-        inset: 0;
-        background: #0b1f13;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        z-index: 9999;
+  <meta charset="UTF-8" />
+  <title>FPL Trajectory</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block extra_css %}{% endblock %}
+  {% block head_extra %}{% endblock %}
+
+  <style>
+    /* ===========================
+       COLD START OVERLAY + LOADER
+       - Uses DOMContentLoaded (does NOT wait for images/CSS)
+       - Has a hard timeout so it can never get stuck
+    ============================ */
+    #cold-start-message{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+
+      /* semi-transparent so you never get a scary blank screen */
+      background: rgba(11,31,19,0.92);
+      color: #fff;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
     }
-    </style>
+    #cold-start-message[hidden]{ display:none !important; }
 
-    <title>FPL Trajectory</title>
-    <meta charset="UTF-8">
+    .cold-card{
+      width: min(520px, 92vw);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    {% block extra_css %}{% endblock %}
+    .cold-row{
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
 
-    {% block head_extra %}{% endblock %}
+    .cold-spinner{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 3px solid rgba(255,255,255,0.35);
+      border-top-color: rgba(40,167,69,0.95);
+      animation: coldSpin .9s linear infinite;
+      flex: 0 0 auto;
+    }
+    @keyframes coldSpin{ to{ transform: rotate(360deg); } }
 
-        <style>
-        /* ===========================
-           NAVIGATION BAR
-        ============================ */
-        nav {
-            background: linear-gradient(90deg, #111111 0%, #222222 100%);
-            padding: 6px 20px;
-            display: flex;
-            align-items: center;
-            gap: 50px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-        }
+    .cold-title{
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+    .cold-sub{
+      margin-top: 6px;
+      font-weight: 800;
+      font-size: 13px;
+      opacity: 0.85;
+      line-height: 1.35;
+    }
 
-        nav a {
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.2s;
-        }
+    /* Loading bar */
+    .cold-bar{
+      margin-top: 14px;
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .cold-bar > span{
+      display: block;
+      height: 100%;
+      width: 35%;
+      background: rgba(40,167,69,0.95);
+      border-radius: 999px;
+      animation: coldBar 1.2s ease-in-out infinite;
+    }
+    @keyframes coldBar{
+      0%   { transform: translateX(-120%); }
+      100% { transform: translateX(320%); }
+    }
 
-        nav a:hover {
-            color: #28a745;
-        }
+    /* ===========================
+       NAVIGATION BAR
+    ============================ */
+    nav {
+      background: linear-gradient(90deg, #111111 0%, #222222 100%);
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 50px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    }
 
-        nav .logo {
-            height: 60px;
-            width: auto;
-            object-fit: cover;
-            object-position: center;
-            transition: transform 0.2s ease-in-out;
-        }
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.2s;
+    }
 
-        nav .logo-link:hover .logo {
-            transform: scale(1.1);
-        }
+    nav a:hover { color: #28a745; }
 
-        /* ===========================
-           BODY DEFAULTS
-        ============================ */
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            min-height: 100vh;
+    nav .logo {
+      height: 60px;
+      width: auto;
+      object-fit: cover;
+      object-position: center;
+      transition: transform 0.2s ease-in-out;
+    }
 
-            /* dark theme background */
-            background:
-                radial-gradient(circle at 50% -20%, rgba(0,255,135,0.18), rgba(0,0,0,0) 45%),
-                radial-gradient(circle at 85% 20%, rgba(0,255,135,0.10), rgba(0,0,0,0) 40%),
-                linear-gradient(180deg, #0b0f0c 0%, #060807 40%, #040505 100%);
+    nav .logo-link:hover .logo { transform: scale(1.1); }
 
-            color: #ffffff;
-        }
+    /* ===========================
+       BODY DEFAULTS
+    ============================ */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
 
+      background:
+        radial-gradient(circle at 50% -20%, rgba(0,255,135,0.18), rgba(0,0,0,0) 45%),
+        radial-gradient(circle at 85% 20%, rgba(0,255,135,0.10), rgba(0,0,0,0) 40%),
+        linear-gradient(180deg, #0b0f0c 0%, #060807 40%, #040505 100%);
 
-        /* ===========================
-           PAGE CONTENT
-        ============================ */
-        .page-content {
-            padding: 40px;
-            background: transparent;
-        }
-    </style>
+      color: #ffffff;
+    }
+
+    /* ===========================
+       PAGE CONTENT
+    ============================ */
+    .page-content {
+      padding: 40px;
+      background: transparent;
+    }
+  </style>
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
-    <div id="cold-start-message">
-        Waking server… first load may take ~30 seconds.
+
+  <!-- Cold start overlay -->
+  <div id="cold-start-message" hidden>
+    <div class="cold-card">
+      <div class="cold-row">
+        <div class="cold-spinner" aria-hidden="true"></div>
+        <div class="cold-title">Waking server…</div>
+      </div>
+      <div class="cold-sub">
+        First visit after inactivity can take ~30–50 seconds on Render Free.<br>
+        Please keep this tab open.
+      </div>
+      <div class="cold-bar" aria-hidden="true"><span></span></div>
     </div>
+  </div>
 
-
-<nav>
+  <nav>
     <a href="/" class="logo-link">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="FPL Trajectory Logo" class="logo">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="FPL Trajectory Logo" class="logo">
     </a>
 
     <a href="/">Home</a>
@@ -103,17 +179,33 @@
     <a href="/lineup">Lineup</a>
     <a href="/teams">Teams</a>
     <a href="/stats">Stats</a>
-</nav>
+  </nav>
 
-<div class="page-content">
+  <div class="page-content">
     {% block content %}{% endblock %}
-</div>
-<script>
-window.addEventListener("load", () => {
-    const msg = document.getElementById("cold-start-message");
-    if (msg) msg.remove();
-});
-</script>
+  </div>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById("cold-start-message");
+      if (!overlay) return;
+
+      // Show overlay immediately on first paint
+      overlay.hidden = false;
+
+      const hide = () => { overlay.hidden = true; };
+
+      // IMPORTANT:
+      // DOMContentLoaded does NOT wait for images/CSS, so it won't get stuck.
+      document.addEventListener("DOMContentLoaded", hide);
+
+      // Safety fallback: never block longer than 8s even if something is broken
+      setTimeout(hide, 8000);
+
+      // If user navigates back/forward (bfcache), don't keep overlay stuck
+      window.addEventListener("pageshow", hide);
+    })();
+  </script>
 
 </body>
 </html>

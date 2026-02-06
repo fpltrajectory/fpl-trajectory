@@ -1,0 +1,4497 @@
+{% extends "base.html" %}
+
+{% block body_class %}lineup-page{% endblock %}
+
+{% block content %}
+<div class="lineup-page">
+  <form method="POST" id="lineupForm">
+    <input type="hidden" id="activeGw" value="{{ active_gw }}">
+    <input type="hidden" id="currentGw" value="{{ gw }}">
+
+
+    <div class="lineup-topbar">
+      <div>
+        <h1 class="page-title">Plan Your Lineup ⚽</h1>
+        <div class="page-subtitle">
+          Click a slot → pick a player from the left list. Click another slot to swap (starter ↔ bench).
+        </div>
+      </div>
+      {# ✅ removed duplicate buttons (HUD has them) #}
+    </div>
+
+    <div class="layout">
+
+      <!-- LEFT: Player Finder -->
+      <aside class="finder">
+        <div class="finder-card">
+          <div class="finder-head">
+            <div class="finder-title">Player Finder</div>
+            <div class="finder-sub" id="finderSub"></div>
+          </div>
+
+          <div class="finder-search">
+            <input
+              id="playerSearch"
+              type="text"
+              placeholder="Search player name"
+              autocomplete="off"
+              disabled
+            />
+          </div>
+
+          <div class="finder-filters">
+            <button type="button" class="chip active" data-filter="">All</button>
+            <button type="button" class="chip" data-filter="GK">GK</button>
+            <button type="button" class="chip" data-filter="DEF">DEF</button>
+            <button type="button" class="chip" data-filter="MID">MID</button>
+            <button type="button" class="chip" data-filter="FWD">FWD</button>
+          </div>
+
+          <div class="finder-table">
+            <div class="finder-pager" id="finderPager" hidden>
+                <button type="button" class="pager-btn" id="finderPrevBtn">◀</button>
+                <div class="pager-mid">
+                    <div class="pager-label">Page</div>
+                    <div class="pager-val" id="finderPageLabel">1 / 1</div>
+                </div>
+                <button type="button" class="pager-btn" id="finderNextBtn">▶</button>
+            </div>
+
+            <div class="table-head">
+              <div>Player</div>
+              <div>Team</div>
+              <div class="right">Pos</div>
+              <div class="right">Price</div>
+              <div class="right">Owned</div>
+            </div>
+
+            <div class="table-body" id="suggestionsBody">
+              <div class="table-empty">Select a slot to load suggestions…</div>
+            </div>
+          </div>
+
+          <div class="finder-tip">
+            <span class="dot"></span>
+            <div class="tip-text">
+              <div>Tip: Select a starter, then click a bench slot to swap.</div>
+              <div class="kbd">Shortcuts: <kbd>C</kbd> Captain, <kbd>V</kbd> Vice, <kbd>Esc</kbd> Clear</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT: Pitch + Planner -->
+      <section class="pitch-wrap">
+
+        <!-- PITCH HUD (stays above pitch) -->
+        <div class="pitch-hud">
+          <div class="hud-item hud-import">
+            <input id="teamIdInput" type="text" inputmode="numeric" placeholder="Team ID" />
+            <button type="button" id="importBtn" class="hud-btn">Import</button>
+          </div>
+
+          
+
+          <div class="hud-item hud-points">
+            <span class="hud-label">XP POINTS</span>
+            <span id="xiTotalPill" class="hud-points-val">—</span>
+          </div>
+
+          <div class="hud-item hud-cta">
+            <button type="button" id="enhanceBtn" class="hud-btn hud-btn-primary">Enhance</button>
+          </div>
+        </div>
+
+        <!-- PITCH -->
+        <div class="pitch" id="pitchRoot" style="position: relative;">
+
+            <!-- ✅ Team name overlay (TOP-RIGHT of the pitch) -->
+            <div class="team-overlay" id="teamOverlay" hidden>
+                <div class="team-overlay-label">TEAM</div>
+                <div class="team-overlay-name" id="teamOverlayName">—</div>
+            </div>
+
+            <!-- ✅ GW overlay (TOP-LEFT of the pitch) -->
+            <div class="gw-overlay" aria-label="Gameweek selector">
+                <div class="gw-overlay-title">GW</div>
+                <div class="gw-overlay-row">
+                    <div class="gw-overlay-num" id="gwPill">{{ gw }}</div>
+                    <div class="gw-overlay-btns">
+                        <button type="button" id="prevGwBtn" class="gw-overlay-btn" aria-label="Previous GW">◀</button>
+                        <button type="button" id="nextGwBtn" class="gw-overlay-btn" aria-label="Next GW">▶</button>
+                    </div>
+                </div>
+            </div>
+            <!-- ✅ Transfer controls ON THE FIELD -->
+            <button type="button" id="tpUpdateBtnField" class="tp-field-btn" hidden>
+              Update team
+            </button>
+
+            <div id="tpLoadingField" class="tp-field-loading" hidden>
+                <div class="tp-spinner" aria-hidden="true"></div>
+                <div class="tp-loading-text">
+                    <div><strong>Calculating transfers…</strong></div>
+                    <div class="tp-loading-sub" id="tpStatusField">Starting…</div>
+                </div>
+            </div>
+
+
+
+
+          <!-- swap arrow overlay -->
+          <svg class="swap-arrow" id="swapArrow" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="rgba(255,255,255,0.85)"></path>
+              </marker>
+            </defs>
+            <path id="swapArrowPath" d="" marker-end="url(#arrowHead)"></path>
+          </svg>
+
+          <!-- Markings -->
+          <div class="goal top"></div>
+          <div class="penalty-box top"></div>
+          <div class="penalty-arc top"></div>
+          <div class="penalty-spot top"></div>
+
+          <div class="center-line"></div>
+          <div class="center-circle"></div>
+
+          <div class="goal bottom"></div>
+          <div class="penalty-box bottom"></div>
+          <div class="penalty-arc bottom"></div>
+          <div class="penalty-spot bottom"></div>
+
+          <!-- ROWS -->
+          <div class="rows">
+            <div class="row row-gk" id="rowGK"></div>
+            <div class="row row-def" id="rowDEF"></div>
+            <div class="row row-mid" id="rowMID"></div>
+            <div class="row row-fwd" id="rowFWD"></div>
+
+            <div class="bench-panel">
+              <div class="bench-panel-head">
+                <div class="bench-left">Bench</div>
+                <div class="bench-right">Click a bench slot to swap with the selected starter.</div>
+              </div>
+              <div class="row row-bench" id="rowBENCH"></div>
+            </div>
+          </div>
+
+        </div>
+
+                <!-- ✅ PLANNER (MUST be AFTER pitch, still inside pitch-wrap) -->
+                <div class="planner-wrap">
+                    <h2 class="planner-title">Captain & Transfer Planner</h2>
+
+                    <!-- Captain / Vice recommendation -->
+                    <div id="capViceBox" class="capvice-wrap"></div>
+
+                    <div class="planner-card">
+                        <!-- NOTE: this is the "import to unlock" message area -->
+                        <div id="plannerMeta" class="planner-meta">
+                            <div class="meta-empty">
+                              Import your team to get detailed transfer advice.
+                            </div>
+                        </div>
+
+                        <div class="planner-body">
+                            <div class="tp-results">
+                                <div class="tp-results-head">
+                                    <div>
+                                      Best Transfers (starting GW <span id="tpGwLabel">—</span>)
+                                        <div class="tp-sub">
+                                          Top 3 options for 1–5 GW horizons • ranked by expected xPts gain
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ✅ tpList must be OUTSIDE the head -->
+                                <div id="tpList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+
+
+
+    <div style="display:none;">
+      {% for i in range(0,15) %}
+        <input type="hidden" name="player_ids" id="hid_{{ i }}" value="{{ slots[i].player_id if slots and slots[i].player_id else '' }}">
+      {% endfor %}
+    </div>
+
+    {% if total is not none %}
+      <div class="below-total">Total Expected Points (XI): <strong>{{ total }}</strong></div>
+    {% endif %}
+
+  </form>
+
+
+  <!-- SLOT TEMPLATE -->
+  <template id="slotTpl">
+    <div class="slot" tabindex="0">
+
+      <div class="kit-box">
+        <div class="slot-actions">
+          <button type="button" class="act cap" title="Make Captain">C</button>
+          <button type="button" class="act vice" title="Make Vice">V</button>
+        </div>
+
+        <div class="kit">
+          <svg class="kit-svg" viewBox="0 0 128 128" aria-hidden="true">
+            <defs>
+              <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.35)"></stop>
+                <stop offset="55%" stop-color="rgba(255,255,255,0.06)"></stop>
+                <stop offset="100%" stop-color="rgba(0,0,0,0.18)"></stop>
+              </linearGradient>
+
+              <radialGradient id="gloss" cx="35%" cy="25%" r="60%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.35)"></stop>
+                <stop offset="55%" stop-color="rgba(255,255,255,0.0)"></stop>
+              </radialGradient>
+            </defs>
+
+            <path class="sleeve" d="M18 36 L6 54 L28 72 L36 58 L36 44 Z"></path>
+            <path class="sleeve" d="M110 36 L122 54 L100 72 L92 58 L92 44 Z"></path>
+
+            <path class="body"
+                  d="M40 18
+                     C44 28, 52 32, 64 32
+                     C76 32, 84 28, 88 18
+                     L110 36
+                     L98 60
+                     L92 54
+                     L92 110
+                     C92 116, 86 122, 80 122
+                     L48 122
+                     C42 122, 36 116, 36 110
+                     L36 54
+                     L30 60
+                     L18 36
+                     Z"></path>
+
+            <path class="shadeOverlay"
+                  d="M40 18
+                     C44 28, 52 32, 64 32
+                     C76 32, 84 28, 88 18
+                     L110 36
+                     L98 60
+                     L92 54
+                     L92 110
+                     C92 116, 86 122, 80 122
+                     L48 122
+                     C42 122, 36 116, 36 110
+                     L36 54
+                     L30 60
+                     L18 36
+                     Z"></path>
+
+            <path class="glossOverlay"
+                  d="M40 18
+                     C44 28, 52 32, 64 32
+                     C76 32, 84 28, 88 18
+                     L110 36
+                     L98 60
+                     L92 54
+                     L92 110
+                     C92 116, 86 122, 80 122
+                     L48 122
+                     C42 122, 36 116, 36 110
+                     L36 54
+                     L30 60
+                     L18 36
+                     Z"></path>
+
+            <path class="collar"
+                  d="M54 26
+                     C56 30, 60 34, 64 34
+                     C68 34, 72 30, 74 26
+                     C71 24, 68 22, 64 22
+                     C60 22, 57 24, 54 26
+                     Z"></path>
+
+            <path class="outline"
+                  d="M18 36 L6 54 L28 72 L36 58 L36 44 Z
+                     M110 36 L122 54 L100 72 L92 58 L92 44 Z
+                     M40 18
+                     C44 28, 52 32, 64 32
+                     C76 32, 84 28, 88 18
+                     L110 36
+                     L98 60
+                     L92 54
+                     L92 110
+                     C92 116, 86 122, 80 122
+                     L48 122
+                     C42 122, 36 116, 36 110
+                     L36 54
+                     L30 60
+                     L18 36
+                     Z"></path>
+
+            <circle class="badge" cx="84" cy="70" r="4.5"></circle>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="name">Select player</div>
+          <div class="meta">
+            <div class="posTag">—</div>
+            <div class="priceTag">—</div>
+          </div>
+        </div>
+
+        <div class="fixture">—</div>
+
+        <div class="metrics">
+          <div class="xpts">
+            <span class="xval">—</span>
+            <span class="xunit">xPts</span>
+          </div>
+          <div class="price">—</div>
+        </div>
+      </div>
+
+    </div>
+  </template>
+
+</div>
+
+
+<style>
+
+.finder-pager{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+}
+
+.pager-btn{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #fff;
+  font-weight: 1000;
+  cursor: pointer;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.pager-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(0,0,0,0.10);
+}
+.pager-btn:disabled{
+  opacity: .35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pager-mid{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: 2px;
+  min-width: 90px;
+}
+.pager-label{
+  font-size: 10px;
+  font-weight: 900;
+  opacity: .55;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.pager-val{
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+/* Reduce base padding ONLY on this page */
+.page-content{ padding: 10px; }
+
+/* TOP BAR */
+.lineup-topbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin: 6px 0 8px;
+}
+.page-title{
+  margin:0;
+  font-size:22px;
+  font-weight: 900;
+  letter-spacing: -0.3px;
+}
+.page-subtitle{
+  margin-top:6px;
+  font-size: 12px;
+  opacity: 0.75;
+  font-weight: 700;
+}
+
+.topbar-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap: wrap;
+  justify-content:flex-end;
+}
+.pill{
+  background:#f3f3f3;
+  border:1px solid rgba(0,0,0,0.10);
+  padding:10px 12px;
+  border-radius:999px;
+  font-weight: 900;
+  font-size: 12px;
+  color: rgba(0,0,0,0.75);
+}
+.btn-primary{
+  border:none;
+  background:#28a745;
+  color:#fff;
+  font-weight: 900;
+  padding: 11px 14px;
+  border-radius: 12px;
+  cursor:pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.btn-secondary{
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #fff;
+  color: rgba(0,0,0,0.85);
+  font-weight: 900;
+  padding: 11px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+.btn-secondary:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(0,0,0,0.10);
+  border-color: rgba(0,0,0,0.22);
+}
+
+.btn-primary:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(40,167,69,0.22);
+}
+
+/* LAYOUT */
+.layout{
+  display:grid;
+  grid-template-columns: 420px 1fr;
+  gap: 12px;
+  align-items:start;
+}
+@media (max-width: 1050px){
+  .layout{ grid-template-columns: 1fr; }
+}
+
+/* FINDER */
+.finder-card{
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.06);
+  border-radius: 18px;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.08);
+  overflow:hidden;
+}
+.finder-head{
+  padding: 14px 14px 10px;
+  border-bottom:1px solid rgba(0,0,0,0.06);
+}
+.finder-title{
+  font-weight: 1000;
+  font-size: 14px;
+}
+.finder-sub{
+  margin-top:4px;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: .65;
+  min-height: 0;
+}
+.finder-search{
+  padding: 12px 14px 0;
+}
+.finder-search input{
+  width: 100%;
+  box-sizing: border-box;  /* ✅ important */
+  display: block;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border:1px solid rgba(0,0,0,0.12);
+  outline:none;
+  font-weight: 800;
+}
+.finder-search input:focus{
+  border-color:#28a745;
+  box-shadow: 0 0 0 4px rgba(40,167,69,0.14);
+}
+.finder-filters{
+  display:flex;
+  gap: 10px;
+  padding: 12px 14px;
+  flex-wrap: wrap;
+}
+.chip{
+  border:1px solid rgba(0,0,0,0.14);
+  background:#fff;
+  padding: 9px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor:pointer;
+}
+.chip.active{
+  background:#28a745;
+  border-color:#28a745;
+  color:#fff;
+  box-shadow: 0 10px 20px rgba(40,167,69,0.18);
+}
+.finder-table{
+  border-top:1px solid rgba(0,0,0,0.06);
+}
+/* Table layout (brings back the nice spacing + aligned columns) */
+.table-head{
+  display:grid;
+  grid-template-columns: minmax(150px, 1fr) 52px 40px 56px 56px;
+  gap: 8px;
+  padding: 10px 14px;
+  font-weight: 1000;
+  font-size: 12px;
+  background:#fafafa;
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  align-items:center;
+}
+
+.table-row{
+  display:grid;
+  grid-template-columns: minmax(150px, 1fr) 52px 40px 56px 56px;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 850;
+  cursor:pointer;
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  align-items:center;
+}
+
+/* Important so long names don’t push other columns around */
+.table-head > div,
+.table-row > div{
+  min-width: 0;
+}
+
+
+.table-body{
+  max-height: none;     /* remove the cap */
+  overflow: visible;    /* no internal scroll */
+}
+
+
+/* Already-picked players in the list */
+.table-row.is-picked{
+  opacity: 0.35;
+  filter: blur(0.4px) grayscale(0.4);
+  pointer-events: none;            /* can't click */
+}
+.table-row.is-picked strong{
+  text-decoration: line-through;
+}
+
+
+.table-row:hover{ background:#f5f5f5; }
+.table-empty{
+  padding: 18px 14px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity:.6;
+}
+.right{ text-align:left; }
+
+.finder-tip{
+  padding: 12px 14px;
+  display:flex;
+  gap: 10px;
+  background:#fff;
+  align-items:flex-start;
+}
+.finder-tip .dot{
+  margin-top: 3px;
+  width:10px;
+  height:10px;
+  border-radius: 50%;
+  background:#28a745;
+  box-shadow: 0 0 0 4px rgba(40,167,69,0.15);
+  flex: 0 0 auto;
+}
+.finder-tip .tip-text{
+  display:flex;
+  flex-direction:column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: .78;
+  line-height: 1.25;
+}
+.finder-tip .kbd{ font-weight: 1000; opacity: .9; }
+.finder-tip kbd{
+  font: inherit;
+  font-weight: 1000;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #f3f3f3;
+  border: 1px solid rgba(0,0,0,0.10);
+}
+.player-cell{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mini-kit{
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex: 0 0 auto;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.08);
+  overflow:hidden;
+}
+
+.mini-kit svg{
+  width: 18px;
+  height: 18px;
+  display:block;
+}
+
+.player-name{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Make the topbar simpler now --- */
+.lineup-topbar{
+  align-items:flex-start;
+  margin: 6px 0 10px;
+}
+.topbar-actions{ display:none; } /* ✅ controls moved into pitch */
+
+/* --- Pitch HUD (inside pitch) --- */
+.pitch{
+  position: relative;
+  padding-top: 54px; /* ✅ space for HUD */
+}
+/* HUD container: grid so it NEVER clips */
+/* One clean toolbar */
+.pitch-hud{
+  width: min(600px, 100%);
+  margin: 0 auto 8px;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+
+  min-width: 0;
+}
+/* One clean toolbar */
+.pitch-hud{
+  width: min(600px, 100%);
+  margin: 0 auto 8px;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+
+  min-width: 0;
+}
+
+.hud-item{ display:flex; align-items:center; gap:8px; min-width:0; }
+
+/* Import group */
+.hud-import{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.hud-import input{
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 34px;
+  border-radius: 10px;
+  border:1px solid rgba(0,0,0,0.14);
+  padding: 0 10px;
+  font-weight: 900;
+  outline:none;
+}
+.hud-import input:focus{
+  border-color:#28a745;
+  box-shadow: 0 0 0 4px rgba(40,167,69,0.14);
+}
+
+/* Labels (small) */
+.hud-label{
+  font-size: 11px;
+  font-weight: 1000;
+  opacity: .6;
+  white-space: nowrap;
+}
+
+/* GW number */
+.hud-gw-num{
+  font-weight: 1000;
+  min-width: 14px;
+}
+
+/* Total should not wrap */
+.hud-total{
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-weight: 1000;
+}
+
+/* Buttons */
+.hud-btn{
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border:1px solid rgba(0,0,0,0.14);
+  background:#fff;
+  font-weight: 1000;
+  cursor:pointer;
+  white-space: nowrap;
+}
+.hud-btn:hover{ background:#f3f4f6; }
+
+.hud-btn-primary{
+  background:#28a745;
+  border-color:#28a745;
+  color:#fff;
+}
+.hud-btn-primary:hover{ background:#24963e; }
+
+/* Tiny arrow buttons */
+.hud-icon{
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border:1px solid rgba(0,0,0,0.14);
+  background:#fff;
+  font-weight: 1000;
+  font-size: 11px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+.hud-icon:hover{ background:#f3f4f6; }
+.hud-icon:disabled{ opacity:.45; cursor:not-allowed; }
+
+/* Keep Enhance on the far right */
+.hud-cta{ margin-left: auto; }
+
+/* On small screens: wrap cleanly */
+@media (max-width: 980px){
+  .pitch-hud{
+    flex-wrap: wrap;
+  }
+  .hud-cta{
+    width: 100%;
+    margin-left: 0;
+  }
+  .hud-cta .hud-btn{
+    width: 100%;
+  }
+}
+/* GW must never wrap */
+.hud-gw{
+  flex: 0 0 auto;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
+/* Keep icons inline + small */
+.hud-icon{
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+/* Highlight points section */
+.hud-points{
+  margin-left: auto;              /* pushes points toward the right side */
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(40,167,69,0.08);
+  border: 1px solid rgba(40,167,69,0.25);
+  box-shadow: inset 0 0 0 1px rgba(40,167,69,0.06);
+  gap: 8px;
+}
+
+/* Bigger bold number */
+.hud-points-val{
+  font-weight: 1000;
+  font-size: 18px;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+
+
+
+/* segmented prev/next */
+.seg{
+  display:inline-flex;
+  border-radius: 999px;
+  overflow:hidden;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+}
+.seg-btn{
+  appearance:none;
+  border:none;
+  background: transparent;
+  padding: 8px 10px;
+  font-weight: 1000;
+  cursor:pointer;
+  color: rgba(0,0,0,0.78);
+  transition: background .12s ease, transform .12s ease;
+}
+.seg-btn:hover{ background: rgba(0,0,0,0.06); }
+.seg-btn:active{ transform: translateY(1px); }
+.seg-btn:disabled{
+  opacity: 0.35;
+  cursor:not-allowed;
+}
+
+/* input + buttons on right */
+.hud-input{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px 6px 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+}
+.hud-input input{
+  width: 130px;
+  border:none;
+  outline:none;
+  background: transparent;
+  font-weight: 950;
+  font-size: 12px;
+  color: rgba(0,0,0,0.80);
+}
+.hud-input input::placeholder{ color: rgba(0,0,0,0.45); }
+
+.hud-btn{
+  border:none;
+  cursor:pointer;
+  font-weight: 1000;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 999px;
+
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.85);
+
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.hud-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.08);
+}
+.hud-btn:active{ transform: translateY(0px); }
+
+.hud-btn-primary{
+  background: rgba(40,167,69,0.95);
+  color:#fff;
+}
+.hud-btn-primary:hover{
+  background: rgba(40,167,69,1);
+  box-shadow: 0 14px 26px rgba(40,167,69,0.26);
+}
+
+/* responsive: stack HUD nicely */
+@media (max-width: 920px){
+  .pitch-hud{
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .hud-left, .hud-center, .hud-right{
+    justify-content:center;
+  }
+  .hud-right{ flex-wrap: wrap; }
+  .hud-input input{ width: 160px; }
+}
+
+/* PITCH */
+.pitch{
+  position: relative;
+  width: min(600px, 100%);
+  margin: 0 auto;
+
+  background: repeating-linear-gradient(180deg, #1f7a3b, #1f7a3b 40px, #226f3b 40px, #226f3b 80px);
+  border: 3px solid rgba(255,255,255,0.85);
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+
+  height: auto;
+  min-height: 620px;
+  max-height: 680px;
+
+  padding: 8px;
+  overflow: visible;
+}
+/* =========================
+   PITCH HUD (ABOVE PITCH)
+   ========================= */
+
+.pitch-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: 10px; /* space between HUD and pitch */
+}
+
+/* Attach HUD to pitch like a single component */
+.pitch-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0; /* no gap between HUD and pitch */
+}
+
+/* Make planner follow pitch width */
+.pitch-wrap .planner-wrap{
+  width: min(720px, 100%);
+  margin: 12px auto 0;
+}
+
+/* Table-style header */
+.pitch-hud{
+  width: min(720px, 100%);
+  display:flex;
+  align-items:stretch;
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.10);
+  border-bottom: 0; /* connects to pitch */
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.08);
+  overflow:hidden;
+}
+
+/* Make pitch match and connect */
+.pitch{
+  width: min(720px, 100%);
+  border-radius: 0 0 14px 14px; /* connects to HUD */
+}
+
+/* Cells */
+.hud-cell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border-right:1px solid rgba(0,0,0,0.08);
+  white-space:nowrap;
+}
+
+/* label/value stacked look for GW + Total */
+.hud-gw, .hud-total{
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  min-width: 120px;
+}
+/* Make header fit better */
+.hud-gw{ min-width: 150px; }         /* a bit wider because arrows are inside */
+.hud-total{ min-width: 170px; }
+.hud-import{ gap: 8px; }
+.hud-import input{ width: 120px; }   /* tighter so everything fits */
+
+/* GW number + arrows on one row */
+.gw-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.gw-arrows{
+  display:flex;
+  gap:6px;
+}
+
+/* tiny arrow buttons */
+.gw-btn{
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #fff;
+  font-weight: 1000;
+  font-size: 11px;
+  line-height: 1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+
+.gw-btn:hover{ background:#f3f4f6; }
+.gw-btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+.hud-label{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  opacity:.55;
+}
+.hud-value{
+  font-size: 13px;
+  font-weight: 1000;
+  color: rgba(0,0,0,0.82);
+}
+
+
+.hud-icon:hover{ background:#f3f4f6; }
+.hud-icon:disabled{ opacity:.45; cursor:not-allowed; }
+
+/* spacer pushes import/enhance to right */
+.hud-spacer{
+  flex: 1 1 auto;
+  border-right:1px solid rgba(0,0,0,0.08);
+}
+
+/* import */
+.hud-import input{
+  width: 140px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  outline:none;
+  font-weight: 900;
+}
+.hud-import input:focus{
+  border-color:#28a745;
+  box-shadow: 0 0 0 3px rgba(40,167,69,0.14);
+}
+
+/* buttons */
+.hud-btn{
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background:#fff;
+  font-weight: 950;
+  cursor:pointer;
+}
+.hud-btn:hover{ background:#f3f4f6; }
+
+.hud-btn-primary{
+  background:#28a745;
+  color:#fff;
+  border-color: rgba(40,167,69,0.35);
+}
+.hud-btn-primary:hover{
+  background:#23943d;
+}
+
+
+
+
+/* Drag-style hint arrow overlay */
+.swap-arrow{
+  position:absolute;
+  inset:0;
+  z-index: 6;
+  pointer-events:none;
+}
+#swapArrowPath{
+  fill: none;
+  stroke: rgba(255,255,255,0.85);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 3;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.pitch.has-arrow #swapArrowPath{ opacity: 1; }
+
+.rows{
+  position: relative;
+  z-index: 3;
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+  padding-top: 6px;
+}
+.row{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+@media (max-width: 980px){
+  .row{ flex-wrap: wrap; }
+}
+
+/* markings */
+.goal, .penalty-box{ position:absolute; left:50%; transform:translateX(-50%); border:3px solid rgba(255,255,255,0.92); z-index:1;}
+.goal.top{ top:0; width:150px; height:22px; }
+.goal.bottom{ bottom:0; width:150px; height:22px; }
+.penalty-box.top{ top:0; width:260px; height:84px; }
+.penalty-box.bottom{ bottom:0; width:260px; height:84px; }
+.penalty-arc{ position:absolute; left:50%; width:90px; height:42px; border:3px solid rgba(255,255,255,0.92); border-radius:50%; transform:translateX(-50%); z-index:1;}
+.penalty-arc.top{ top:84px; border-top:none; border-left-color:transparent; border-right-color:transparent; }
+.penalty-arc.bottom{ bottom:84px; border-bottom:none; border-left-color:transparent; border-right-color:transparent; }
+.penalty-spot{ position:absolute; left:50%; width:7px; height:7px; background:rgba(255,255,255,0.92); border-radius:50%; transform:translateX(-50%); z-index:1;}
+.penalty-spot.top{ top:100px; }
+.penalty-spot.bottom{ bottom:100px; }
+.center-line{ position:absolute; top:50%; left:0; width:100%; height:2px; background:rgba(255,255,255,0.92); transform:translateY(-50%); z-index:1;}
+.center-circle{ position:absolute; top:50%; left:50%; width:58px; height:58px; border:3px solid rgba(255,255,255,0.92); border-radius:50%; transform:translate(-50%,-50%); z-index:1;}
+
+/* SLOT LOOK */
+.slot{
+  width: 80px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  cursor:pointer;
+  user-select:none;
+  outline:none;
+  transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+  position: relative;
+}
+
+
+/* NEW: box behind the shirt so buttons don't overlap other slots */
+.kit-box{
+  position: relative;
+  width: 66px;
+  height: 66px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.22);
+  backdrop-filter: blur(6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+}
+
+.kit{ transform: translateY(2px); position: relative; }
+.kit-svg{
+  width: 62px;
+  height: 62px;
+  filter: drop-shadow(0 14px 18px rgba(0,0,0,0.20)) drop-shadow(0 4px 8px rgba(0,0,0,0.10));
+}
+
+/* ✅ CRITICAL: body/sleeve fill uses CSS variables so patterns work */
+.kit-svg .body{
+  fill: var(--kit-body-fill, var(--kit-body, #d9d9d9));
+}
+.kit-svg .sleeve{
+  fill: var(--kit-sleeve-fill, var(--kit-sleeve, var(--kit-body, #d9d9d9)));
+}
+
+.kit-svg .shadeOverlay{ fill: url(#shade); mix-blend-mode: multiply; opacity: 0.55; }
+.kit-svg .glossOverlay{ fill: url(#gloss); opacity: 0.7; }
+.kit-svg .outline{ fill:none; stroke: rgba(255,255,255,0.65); stroke-width:2; }
+.kit-svg .collar{ fill: rgba(0,0,0,0.20); }
+.kit-svg .badge{ fill: rgba(255,255,255,0.55); stroke: rgba(0,0,0,0.10); stroke-width: 1; }
+
+/* Captain / Vice badges */
+.role-badge{
+  position:absolute;
+  top: -6px;
+  left: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 1000;
+  font-size: 10px;
+  color:#0b1a2b;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.18);
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity .12s ease, transform .12s ease;
+  pointer-events:none;
+}
+.role-badge.vice{ left: 12px; }
+.slot.is-captain .role-badge.cap{ opacity: 1; transform: scale(1); }
+.slot.is-vice .role-badge.vice{ opacity: 1; transform: scale(1); }
+/* ✅ IMPORTANT: never show both buttons on the same player */
+.slot.is-captain .act.vice{ display:none; }
+.slot.is-vice .act.cap{ display:none; }
+
+/* CARDS */
+.card{
+  margin-top: 2px;
+  padding: 2px 2px;
+  border-radius: 7px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.10);
+  width: 100%;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.10);
+  text-align:center;
+  backdrop-filter: blur(6px);
+}
+
+.card-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap: 6px;
+}
+
+.meta{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.posTag,
+.priceTag{
+  font-size: 7px;
+  font-weight: 1000;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.06);
+  line-height: 1.2;
+}
+
+.posTag{
+  background: rgba(0,0,0,0.08);
+}
+
+.priceTag{
+  opacity: 0.85;
+}
+
+
+.name{
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.posTag{
+  font-size: 7px;
+  padding: 1px 4px;
+}
+
+.fixture{
+  font-size: 7.5px;
+  line-height: 1.05;
+  margin-top: 0;
+}
+
+.metrics{
+  margin-top: 3px;
+  display:flex;
+  justify-content:center;
+  gap: 4px;
+  align-items: baseline;
+  line-height: 1.1;
+}
+
+
+.xpts{
+  text-align:center;
+}
+
+.xval{
+  font-size: 15px;     /* ✅ bigger */
+  font-weight: 1000;
+  letter-spacing: -0.2px;
+}
+.xunit{
+  font-size: 7.5px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+
+.price{
+  display: none;
+}
+
+
+/* SELECTION UX */
+.pitch.has-selection .slot:not(.selected){
+  opacity: 0.45;
+  filter: saturate(0.85);
+}
+
+/* =========================
+   GW OVERLAY — DARKER PURPLE
+   ========================= */
+
+.gw-overlay{
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 50;
+
+  padding: 12px 14px;
+  border-radius: 18px;
+
+  background: rgba(10,10,12,0.92); /* slightly darker base */
+  border: 1px solid rgba(140,120,220,0.28);
+  box-shadow:
+    0 18px 36px rgba(0,0,0,0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.035);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  user-select: none;
+}
+
+.gw-overlay-title{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: rgba(170,155,235,0.75); /* darker purple text */
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.gw-overlay-row{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* BIG NUMBER */
+.gw-overlay-num{
+  font-size: 36px;
+  font-weight: 1000;
+  line-height: 1;
+
+  padding: 6px 14px;
+  border-radius: 14px;
+
+  background: linear-gradient(135deg, #5f4bd8, #7a63e8); /* darker purple */
+  color: #fff;
+
+  box-shadow:
+    0 8px 20px rgba(110,90,220,0.45),
+    inset 0 0 0 1px rgba(255,255,255,0.22);
+
+  letter-spacing: -0.6px;
+}
+
+/* BUTTON GROUP */
+.gw-overlay-btns{
+  display: flex;
+  gap: 6px;
+}
+
+.gw-overlay-btn{
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(140,120,220,0.35);
+
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  cursor:pointer;
+
+  transition:
+    transform .12s ease,
+    box-shadow .12s ease,
+    background .12s ease;
+}
+
+.gw-overlay-btn:hover{
+  background: rgba(255,255,255,0.16);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(110,90,220,0.45);
+}
+
+.gw-overlay-btn:disabled{
+  opacity: 0.32;
+  cursor: not-allowed;
+  box-shadow:none;
+  transform:none;
+}
+
+/* TEAM OVERLAY (top-right) */
+.team-overlay{
+  position: absolute;
+  top: 12px;
+  right: 12px;              /* keep inside pitch */
+  z-index: 50;
+
+  padding: 10px 14px;
+  border-radius: 16px;
+
+  background: rgba(10,10,14,0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+
+  box-shadow:
+    0 18px 36px rgba(0,0,0,0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  user-select: none;
+
+  max-width: 220px;        /* prevents spill */
+  overflow: hidden;
+}
+.team-overlay-label{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.team-overlay-name{
+  font-size: 15px;
+  font-weight: 1000;
+  color: rgba(255,255,255,0.95);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+
+
+.slot.selected{
+  transform: translateY(-3px);
+  z-index: 12;
+  filter: drop-shadow(0 18px 28px rgba(40,167,69,0.28));
+}
+.slot.selected .card{
+  border: 2px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 4px rgba(40,167,69,0.25), 0 14px 26px rgba(0,0,0,0.20);
+}
+.slot.selected::after{
+  content:"";
+  position:absolute;
+  width: 110px;
+  height: 110px;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  border: 2px solid rgba(40,167,69,0.55);
+  box-shadow: 0 0 0 6px rgba(40,167,69,0.12);
+  animation: pulseRing 1.25s ease-in-out infinite;
+  pointer-events:none;
+  opacity: 0.85;
+}
+
+/* Slot action buttons (inside kit-box, smaller) */
+.slot-actions{
+  position:absolute;
+  top: 4px;
+  right: 4px;
+  display:flex;
+  gap: 4px;
+  z-index: 30;
+
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+
+
+
+.act{
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.14);
+  font-weight: 1000;
+  font-size: 9px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0;
+  line-height: 1;
+}
+
+
+.act.cap{ color:#0b1a2b; }
+.act.vice{ color:#0b1a2b; }
+
+
+.slot.selected .slot-actions,
+.slot.is-captain .slot-actions,
+.slot.is-vice .slot-actions{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+.act:hover{
+  transform: translateY(-1px);
+}
+
+.act.swap{
+  color: #1b7f3a; /* green-ish */
+}
+
+.act.cap{
+  color: #0b1a2b;
+}
+
+.act.vice{
+  color: #0b1a2b;
+}
+
+/* Active states */
+.slot.is-captain .act.cap{
+  background: rgba(40,167,69,0.95); /* green */
+  color: #fff;
+  border-color: rgba(0,0,0,0.08);
+}
+
+.slot.is-vice .act.vice{
+  background: rgba(255,193,7,0.95); /* yellow */
+  color: #1a1a1a;
+  border-color: rgba(0,0,0,0.10);
+}
+
+
+@keyframes pulseRing{
+  0%   { transform: translateX(-50%) scale(0.96); opacity: 0.85; }
+  60%  { transform: translateX(-50%) scale(1.04); opacity: 0.45; }
+  100% { transform: translateX(-50%) scale(0.96); opacity: 0.85; }
+}
+.slot.swap-target .card{
+  border: 2px dashed rgba(255,255,255,0.70);
+  box-shadow: 0 10px 16px rgba(0,0,0,0.10);
+}
+
+/* Ghost preview */
+.slot .ghost{
+  position:absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 112px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 10px;
+  padding: 6px 7px;
+  box-shadow: 0 16px 28px rgba(0,0,0,0.22);
+  opacity: 0;
+  pointer-events:none;
+  transition: opacity .12s ease, transform .12s ease;
+  z-index: 20;
+}
+.slot.show-ghost .ghost{
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+.ghost .gname{ font-weight: 1000; font-size: 9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ghost .gsub{ margin-top: 2px; font-weight: 900; font-size: 8.5px; opacity: .75; display:flex; justify-content:space-between; }
+
+/* BENCH PANEL */
+.bench-panel{
+  display: inline-block;
+  margin: 10px auto 0;
+  padding: 10px 14px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.30);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  backdrop-filter: blur(6px);
+  position: relative;
+  z-index: 5;
+}
+.rows > .bench-panel{ align-self: center; }
+
+.bench-panel-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.bench-panel .bench-left{ font-weight: 1000; letter-spacing: .6px; }
+.bench-panel .bench-right{ font-weight: 900; font-size: 11px; opacity: .9; }
+.row.row-bench{ display: inline-flex; justify-content:center; gap: 10px; }
+
+/* below total */
+.below-total{
+  margin-top: 12px;
+  text-align:center;
+  font-size: 15px;
+  font-weight: 900;
+  opacity: .9;
+}
+
+/* toast */
+.toast{
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,20,20,0.92);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+  box-shadow: 0 16px 30px rgba(0,0,0,0.22);
+  z-index: 999999;
+  opacity: 0;
+  pointer-events:none;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.toast.show{
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+.gw-nav{
+  display:flex;
+  gap:8px;
+}
+.import-wrap{ display:flex; gap:8px; align-items:center; }
+.team-id-input{
+  width: 140px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.14);
+  font-weight: 900;
+  outline: none;
+}
+.team-id-input:focus{
+  border-color:#28a745;
+  box-shadow: 0 0 0 4px rgba(40,167,69,0.14);
+}
+/* force GW section to be ONE horizontal row */
+.hud-gw{
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
+}
+
+/* keep GW text stacked (GW label over number) */
+.hud-gw-meta{
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+/* keep arrows side-by-side (never stacked) */
+.hud-gw-controls{
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* small arrows */
+.hud-icon{
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 10px;
+}
+.tp-section{
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.16);
+  box-shadow: 0 14px 26px rgba(0,0,0,0.22);
+}
+.tp-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 10px;
+}
+.tp-row{
+  display:grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items:center;
+  padding: 10px 10px;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  background:#fff;
+  margin-bottom: 8px;
+}
+.tp-pill{
+  font-weight: 1000;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(40,167,69,0.10);
+  border: 1px solid rgba(40,167,69,0.25);
+  white-space: nowrap;
+}
+.tp-horizons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin: 10px 0 12px;
+  opacity: 0.95;
+}
+.tp-horizons .tp-pill{
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+.tp-strong{ font-weight: 1000; }
+.tp-small{ font-size: 12px; opacity: 0.7; font-weight: 800; }
+
+/* =========================
+   PLANNER THEME FIX
+   ========================= */
+
+.planner-wrap{
+  width: min(720px, 100%);
+  margin: 12px auto 0;
+}
+
+.planner-title{
+  margin: 0 0 10px;
+  font-weight: 1000;
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 10px 22px rgba(0,0,0,0.35);
+}
+
+/* Dark card so content is readable on the green pitch theme */
+.planner-card{
+  width: 100%;
+  background: rgba(8, 18, 12, 0.72);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  box-shadow: 0 18px 34px rgba(0,0,0,0.22);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.planner-meta{
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.92);
+  font-weight: 900;
+}
+
+.meta-empty{
+  opacity: 0.9;
+}
+
+.planner-body{
+  padding: 12px 14px 14px;
+}
+
+/* =========================
+   CAPTAIN / VICE CARDS
+   ========================= */
+
+.capvice-wrap{
+  width: 100%;
+  margin: 0 0 12px;
+}
+
+.cap-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 720px){
+  .cap-grid{ grid-template-columns: 1fr; }
+}
+
+.cap-card{
+  position: relative;
+  border-radius: 16px;
+  padding: 12px 12px 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 16px 30px rgba(0,0,0,0.18);
+  backdrop-filter: blur(10px);
+  overflow:hidden;
+  color: rgba(255,255,255,0.94);
+}
+
+.cap-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: radial-gradient(80% 120% at 10% 10%, rgba(255,255,255,0.10), transparent 60%);
+  pointer-events:none;
+}
+
+.cap-head{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.cap-tag{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  font-weight: 1000;
+  font-size: 11px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.18);
+}
+
+.cap-card.cap .cap-tag{
+  background: rgba(40,167,69,0.18);
+  border-color: rgba(40,167,69,0.35);
+}
+
+.cap-card.vice .cap-tag{
+  background: rgba(255,193,7,0.14);
+  border-color: rgba(255,193,7,0.32);
+}
+
+.cap-avatar{
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.22);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.18);
+  overflow:hidden;
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 1000;
+  color: rgba(255,255,255,0.90);
+}
+
+.cap-avatar img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+
+.cap-name{
+  font-size: 16px;
+  font-weight: 1000;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+}
+
+.cap-sub{
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+.cap-x{
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.92;
+}
+
+.cap-x strong{
+  font-weight: 1000;
+}
+
+.cap-why{
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 850;
+  opacity: 0.78;
+}
+
+.cap-empty{
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px dashed rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.90);
+  font-weight: 900;
+}
+
+/* Head */
+.tp-results-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap: 10px;
+  color: rgba(255,255,255,0.95);
+  font-weight: 1000;
+  margin-bottom: 10px;
+}
+
+.tp-sub{
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.78;
+}
+
+/* Empty */
+.tp-empty{
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.90);
+  font-weight: 900;
+  opacity: 0.85;
+  background: rgba(255,255,255,0.06);
+}
+
+/* Rows now dark (NOT white) */
+.tp-row{
+  display:grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items:center;
+
+  padding: 12px 12px;
+  border-radius: 14px;
+
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  margin-bottom: 10px;
+
+  color: rgba(255,255,255,0.92);
+}
+
+.tp-small{
+  color: rgba(255,255,255,0.78);
+}
+
+.tp-pill{
+  font-weight: 1000;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(40,167,69,0.18);
+  border: 1px solid rgba(40,167,69,0.35);
+  color: rgba(255,255,255,0.95);
+  white-space: nowrap;
+}
+.tp-tools{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.tp-update-btn{
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.92);
+  font-weight: 950;
+  cursor: pointer;
+}
+.tp-update-btn:hover{ background: rgba(255,255,255,0.12); }
+.tp-update-btn:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tp-loading{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.95);
+  min-width: 240px;
+}
+
+.tp-spinner{
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: rgba(255,255,255,0.95);
+  animation: tpSpin 0.9s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes tpSpin{
+  to{ transform: rotate(360deg); }
+}
+
+.tp-loading-text{
+  display:flex;
+  flex-direction:column;
+  gap: 2px;
+  line-height: 1.1;
+}
+
+.tp-loading-sub{
+  font-size: 12px;
+  font-weight: 850;
+  opacity: 0.8;
+}
+
+.tp-progress{
+  margin-top: 10px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.10);
+  overflow:hidden;
+}
+
+.tp-progress-bar{
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(40,167,69,0.9);
+  width: 0%;
+  transition: width .15s ease;
+}
+/* =========================
+   TRANSFER CONTROLS ON FIELD
+   ========================= */
+
+/* Update team button (top-left, below GW overlay) */
+.tp-field-btn{
+  position: absolute;
+  left: 14px;
+  top: 132px;          /* adjust if needed */
+  z-index: 55;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-weight: 1000;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(10,10,14,0.92);
+  color: rgba(255,255,255,0.92);
+
+  
+  cursor: pointer;
+  box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+}
+.tp-field-btn:hover{ background: rgba(255,255,255,0.10); }
+.tp-field-btn:disabled{ opacity: 0.45; cursor: not-allowed; }
+
+/* Loader (top-right, below TEAM overlay) */
+.tp-field-loading{
+  position: absolute;
+  right: 14px;
+  top: 102px;          /* adjust if needed */
+  z-index: 55;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 14px;
+
+  background: rgba(10,10,14,0.92);
+  border: 1px solid rgba(255,255,255,0.14);
+
+  box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+  max-width: 320px;
+}
+/* HARD OVERRIDE: hidden must always win */
+#tpLoadingField[hidden],
+#tpUpdateBtnField[hidden]{
+  display: none !important;
+}
+
+</style>
+
+<script>
+const initialSlots = {{ (slots or [])|tojson }};
+const slotTypes    = {{ (slot_types or [])|tojson }};
+
+const BENCH_INDEXES = [11,12,13,14];
+const GK_SLOTS = [0, 11]; // starter GK + first bench slot is GK
+const EXCLUDED_OUT_INDEXES = new Set([11]); // never suggest transfers involving bench GK
+
+
+function xptsNum(slot){
+  const v = slot?.xpts;
+  const n = (v === "" || v == null) ? NaN : Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+function toFiniteXpts(v){
+  // Treat placeholders / missing values as NaN (NOT 0)
+  if(v === "" || v == null) return NaN;
+  if(v === "—" || v === "…" || v === "...") return NaN;
+
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function fmtSigned(n, decimals = 2){
+  if(!Number.isFinite(n)) return "—";
+  const sign = n >= 0 ? "+" : "−";
+  return `${sign}${Math.abs(n).toFixed(decimals)}`;
+}
+
+function allSlotsFilled(){
+  return initialSlots.every(s => (s?.player_id && String(s.player_id).trim() !== ""));
+}
+
+function allXptsReady(){
+  // require xpts values for meaningful enhancement (if any missing, block)
+  return initialSlots.every(s => Number.isFinite(xptsNum(s)));
+}
+
+let selectedSlotIndex = null;
+let finderFilter = "";
+let finderQuery  = "";
+
+// ===== Finder pagination =====
+const PAGE_SIZE = 12;
+let finderPage = 1;
+let finderLastPlayers = [];
+
+
+// Captain / Vice state
+let captainIndex = null;
+let viceIndex    = null;
+
+const rowGK   = document.getElementById("rowGK");
+const rowDEF  = document.getElementById("rowDEF");
+const rowMID  = document.getElementById("rowMID");
+const rowFWD  = document.getElementById("rowFWD");
+const rowBENCH= document.getElementById("rowBENCH");
+
+const pitchRoot     = document.getElementById("pitchRoot");
+const swapArrowPath = document.getElementById("swapArrowPath");
+
+const slotTpl        = document.getElementById("slotTpl");
+const playerSearch   = document.getElementById("playerSearch");
+const suggestionsBody= document.getElementById("suggestionsBody");
+
+let currentGW = null;
+let gwEvents = []; // from /api/gameweeks
+
+let upcomingGW = null; // the GW we should plan from (is_next)
+
+// forward-only rule: never allow viewing below active gameweek
+const activeGwEl  = document.getElementById("activeGw");
+const currentGwEl = document.getElementById("currentGw");
+
+const MIN_GW = activeGwEl ? Number(activeGwEl.value) : null;
+
+
+function setGwPill(){
+  const el = document.getElementById("gwPill");
+  if(!el) return;
+  el.textContent = (currentGW != null) ? `${currentGW}` : "—";
+}
+
+
+function recalcBudgetFromSquad(){
+  // Only do this if we have an imported team with a known total value
+  if(!importedTeamMeta?.team_id) return;
+  if(importedTeamMeta.total_value == null) return;
+
+  // Only recalc when all 15 slots have valid prices
+  let squadSum = 0;
+  for(let i=0;i<15;i++){
+    const s = initialSlots[i];
+    const price = Number(s?.price);
+    if(!s?.player_id || !Number.isFinite(price)) return; // don’t overwrite with garbage
+    squadSum += price;
+  }
+
+  const total = Number(importedTeamMeta.total_value);
+  const bank = total - squadSum;
+
+  importedTeamMeta.squad_value = squadSum;
+  importedTeamMeta.bank = bank;
+
+  renderPlannerMeta(); // updates UI pills
+}
+
+async function loadGameweeks(){
+  try{
+    const res = await fetch("/api/gameweeks");
+    if(!res.ok) return;
+
+    const data = await res.json();
+    gwEvents = data?.events || [];
+
+    // suggested defaults from API
+    const cur = gwEvents.find(e => e.is_current);
+    const nxt = gwEvents.find(e => e.is_next);
+    const lastFinished = [...gwEvents].filter(e => e.finished).sort((a,b)=>b.id-a.id)[0];
+
+    // server-rendered current GW (from Flask), if present
+    const serverGw = currentGwEl ? Number(currentGwEl.value) : null;
+
+    // ✅ Decide what the "upcoming" GW is (preferred for default view + planning)
+    // Priority:
+    // 1) explicit is_next
+    // 2) if current exists and is not finished, treat current as upcoming
+    // 3) fallback to last finished (or null)
+    upcomingGW =
+      (typeof nxt?.id === "number" ? nxt.id : null)
+      ?? ((typeof cur?.id === "number" && !cur.finished) ? cur.id : null)
+      ?? (typeof lastFinished?.id === "number" ? lastFinished.id : null)
+      ?? null;
+
+    // ✅ choose starting GW (prefer upcoming first)
+    if(currentGW == null){
+      currentGW =
+        (Number.isFinite(upcomingGW) ? upcomingGW : null)
+        ?? (Number.isFinite(serverGw) ? serverGw : null)
+        ?? (typeof cur?.id === "number" ? cur.id : null)
+        ?? (typeof lastFinished?.id === "number" ? lastFinished.id : null)
+        ?? null;
+    }
+
+    // ✅ clamp to forward-only MIN_GW
+    if(Number.isFinite(MIN_GW) && Number.isFinite(currentGW)){
+      currentGW = Math.max(MIN_GW, currentGW);
+    }
+
+    setGwPill();
+    updateGwButtons();
+  }catch(e){
+    // optional: console.warn("loadGameweeks failed", e);
+  }
+}
+
+function updateGwButtons(){
+  const prevBtn = document.getElementById("prevGwBtn");
+  const nextBtn = document.getElementById("nextGwBtn");
+  if(!prevBtn || !nextBtn) return;
+
+  const ids = gwEvents.map(e => e.id).sort((a,b)=>a-b);
+  const idx = ids.indexOf(currentGW);
+
+  // ✅ forward-only: don't allow < MIN_GW
+  const minIdx = (Number.isFinite(MIN_GW)) ? ids.indexOf(MIN_GW) : 0;
+
+  prevBtn.disabled = (idx <= minIdx);                 // can't go earlier than MIN_GW
+  nextBtn.disabled = (idx < 0 || idx >= ids.length-1); // can always go forward if exists
+}
+
+
+function getPrevNextGw(delta){
+  const ids = gwEvents.map(e => e.id).sort((a,b)=>a-b);
+  const idx = ids.indexOf(currentGW);
+  if(idx < 0) return null;
+
+  const minIdx = (Number.isFinite(MIN_GW)) ? ids.indexOf(MIN_GW) : 0;
+
+  const nextIdx = idx + delta;
+
+  // ✅ forward-only clamp
+  if(nextIdx < minIdx) return null;
+  if(nextIdx >= ids.length) return null;
+
+  return ids[nextIdx];
+}
+
+function updateXiTotalPill(){
+  const pill = document.getElementById("xiTotalPill");
+  if(!pill) return;
+
+  let total = 0;
+  let any = false;
+
+  // Sum XI (0..10)
+  for(let i=0;i<=10;i++){
+    const n = xptsNum(initialSlots[i]);
+    if(Number.isFinite(n)){
+      total += n;
+      any = true;
+    }
+  }
+
+  // ✅ Captain double (add captain’s xPts one extra time)
+  if(captainIndex != null && captainIndex >= 0 && captainIndex <= 10){
+    const capX = xptsNum(initialSlots[captainIndex]);
+    if(Number.isFinite(capX)){
+      total += capX;
+      any = true;
+    }
+  }
+
+  pill.textContent = any ? `${total.toFixed(2)} xPts` : `—`;
+}
+
+function showToast(msg){
+  let el = document.querySelector(".toast");
+  if(!el){
+    el = document.createElement("div");
+    el.className = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(()=> el.classList.remove("show"), 1800);
+}
+
+function normalizePos(p){
+  return (p && typeof p === "string") ? p.toUpperCase() : null;
+}
+function getSlotPos(slot){
+  return normalizePos(slot?.pos) || null;
+}
+
+function xiCounts(slots){
+  let def=0, mid=0, fwd=0, gk=0;
+  for(let i=0;i<=10;i++){
+    const pos = getSlotPos(slots[i]);
+    if(!pos) continue;
+    if(pos==="GK")  gk++;
+    if(pos==="DEF") def++;
+    if(pos==="MID") mid++;
+    if(pos==="FWD") fwd++;
+  }
+  return {gk, def, mid, fwd};
+}
+
+/* only enforce formation rules when all 10 outfield XI slots are filled */
+function validateXI(slots){
+  const gk0 = getSlotPos(slots[0]);
+  if(gk0 && gk0 !== "GK") return {ok:false, msg:"Slot 0 must be a GK."};
+
+  for(let i=1;i<=10;i++){
+    if(getSlotPos(slots[i]) === "GK"){
+      return {ok:false, msg:"Goalkeepers can only be placed in the GK slot."};
+    }
+  }
+
+  let outfieldFilled = 0;
+  for(let i=1;i<=10;i++){
+    if(getSlotPos(slots[i])) outfieldFilled++;
+  }
+  if(outfieldFilled < 10){
+    return {ok:true, msg:""};
+  }
+
+  const c = xiCounts(slots);
+  if(c.def < 3) return {ok:false, msg:"XI must have at least 3 defenders."};
+  if(c.mid < 2) return {ok:false, msg:"XI must have at least 2 midfielders."};
+  if(c.fwd < 1) return {ok:false, msg:"XI must have at least 1 forward."};
+
+  return {ok:true, msg:""};
+}
+
+function setHidden(index, value){
+  const hid = document.getElementById(`hid_${index}`);
+  if(hid) hid.value = value || "";
+}
+
+function toggleCaptain(idx){
+  if(idx > 10){ showToast("Captain must be in the XI."); return; }
+  if(!initialSlots[idx]?.player_id){ showToast("Pick a player first."); return; }
+
+  if(captainIndex === idx) captainIndex = null;
+  else {
+    captainIndex = idx;
+    if(viceIndex === idx) viceIndex = null;
+  }
+
+  saveRoleState();
+  renderPitch();
+  showToast(captainIndex === idx ? "Captain set" : "Captain cleared");
+}
+
+function toggleVice(idx){
+  if(idx > 10){ showToast("Vice must be in the XI."); return; }
+  if(!initialSlots[idx]?.player_id){ showToast("Pick a player first."); return; }
+
+  if(viceIndex === idx) viceIndex = null;
+  else {
+    viceIndex = idx;
+    if(captainIndex === idx) captainIndex = null;
+  }
+
+  saveRoleState();
+  renderPitch();
+  showToast(viceIndex === idx ? "Vice set" : "Vice cleared");
+}
+
+/* ---------- Captain/Vice helpers ---------- */
+function loadRoleState(){
+  try{
+    const raw = localStorage.getItem("lineup_roles_v1");
+    if(!raw) return;
+    const obj = JSON.parse(raw);
+    if(typeof obj?.captainIndex === "number") captainIndex = obj.captainIndex;
+    if(typeof obj?.viceIndex === "number") viceIndex = obj.viceIndex;
+  }catch(e){}
+}
+function saveRoleState(){
+  try{
+    localStorage.setItem("lineup_roles_v1", JSON.stringify({ captainIndex, viceIndex }));
+  }catch(e){}
+}
+function setCaptain(idx){
+  if(idx == null) return;
+  if(idx > 10){ showToast("Captain must be in the XI."); return; }
+  if(!initialSlots[idx]?.player_id){ showToast("Pick a player first."); return; }
+  captainIndex = idx;
+  if(viceIndex === idx) viceIndex = null;
+  saveRoleState();
+  renderPitch();
+  showToast("Captain set");
+}
+function setVice(idx){
+  if(idx == null) return;
+  if(idx > 10){ showToast("Vice must be in the XI."); return; }
+  if(!initialSlots[idx]?.player_id){ showToast("Pick a player first."); return; }
+  viceIndex = idx;
+  if(captainIndex === idx) captainIndex = null;
+  saveRoleState();
+  renderPitch();
+  showToast("Vice set");
+}
+
+/* ---------- Ghost + arrow helpers ---------- */
+function clearArrow(){
+  pitchRoot.classList.remove("has-arrow");
+  swapArrowPath.setAttribute("d", "");
+}
+function setArrowBetween(aEl, bEl){
+  if(!aEl || !bEl) return;
+
+  const pr = pitchRoot.getBoundingClientRect();
+  const ar = aEl.getBoundingClientRect();
+  const br = bEl.getBoundingClientRect();
+
+  const ax = ((ar.left + ar.right)/2 - pr.left) / pr.width * 100;
+  const ay = ((ar.top + ar.bottom)/2 - pr.top) / pr.height * 100;
+
+  const bx = ((br.left + br.right)/2 - pr.left) / pr.width * 100;
+  const by = ((br.top + br.bottom)/2 - pr.top) / pr.height * 100;
+
+  const mx = (ax + bx) / 2;
+  const my = (ay + by) / 2 - 6;
+
+  const d = `M ${ax} ${ay} Q ${mx} ${my} ${bx} ${by}`;
+  swapArrowPath.setAttribute("d", d);
+  pitchRoot.classList.add("has-arrow");
+}
+
+function attachGhostHandlers(slotEl, index){
+  slotEl.addEventListener("mouseenter", () => {
+    if(selectedSlotIndex == null) return;
+
+    const selectedZone = (selectedSlotIndex <= 10) ? "xi" : "bench";
+    const targetZone   = (index <= 10) ? "xi" : "bench";
+    if(selectedZone === targetZone) return;
+
+    const src = initialSlots[selectedSlotIndex] || {};
+    if(!src?.player_id) return;
+
+    let ghost = slotEl.querySelector(".ghost");
+    if(!ghost){
+      ghost = document.createElement("div");
+      ghost.className = "ghost";
+      ghost.innerHTML = `
+        <div class="gname"></div>
+        <div class="gsub">
+          <span class="gpos"></span>
+          <span class="gprice"></span>
+        </div>
+      `;
+      slotEl.appendChild(ghost);
+    }
+
+    ghost.querySelector(".gname").textContent  = src.name || "Selected";
+    ghost.querySelector(".gpos").textContent   = (src.pos || "").toUpperCase();
+    ghost.querySelector(".gprice").textContent = (src.price != null) ? `£${Number(src.price).toFixed(1)}m` : "";
+
+    slotEl.classList.add("show-ghost");
+
+    const aEl = document.querySelector(`.slot[data-index="${selectedSlotIndex}"]`);
+    setArrowBetween(aEl, slotEl);
+  });
+
+  slotEl.addEventListener("mouseleave", () => {
+    slotEl.classList.remove("show-ghost");
+    clearArrow();
+  });
+}
+
+/* ---------- Team kits ---------- */
+// TEAM KIT STYLES (team_id 1..20 from FPL)
+const TEAM_KITS = {
+  1:  { pattern:"solid", body:"#c8102e", sleeve:"#ffffff" }, // Arsenal
+  2:  { pattern:"solid", body:"#4b2337", sleeve:"#9bc7e5" }, // Aston Villa
+  3:  { pattern:"solid", body:"#6a1b9a", sleeve:"#6a1b9a" }, // Burnley (example)
+  4:  { pattern:"stripes", body:["#d0002a","#111111"], stripeW:10 }, // Bournemouth
+  5:  { pattern:"stripes", body:["#d71920","#ffffff"], stripeW:14 }, // Brentford
+  6:  { pattern:"stripes", body:["#0057b8","#ffffff"], stripeW:12 }, // Brighton
+  7:  { pattern:"solid", body:"#034694", sleeve:"#034694" }, // Chelsea
+  8:  { pattern:"stripes", body:["#1f3c88","#c8102e"], stripeW:10 }, // Palace
+  9:  { pattern:"solid", body:"#001f5b", sleeve:"#001f5b" }, // Everton
+  10: { pattern:"solid", body:"#ffffff", sleeve:"#111111" }, // Fulham
+  11: { pattern:"solid", body:"#f2f2f2", sleeve:"#f2f2f2" }, // Leeds
+  12: { pattern:"solid", body:"#a0001b", sleeve:"#a0001b" }, // Liverpool
+  13: { pattern:"solid", body:"#6cabdd", sleeve:"#6cabdd" }, // Man City
+  14: { pattern:"solid", body:"#d62d20", sleeve:"#d62d20" }, // Man United
+  15: { pattern:"stripes", body:["#000000","#ffffff"], stripeW:10 }, // Newcastle
+  16: { pattern:"thin_stripes", body:["#d71920","#ffffff"], stripeW:16, lineW:2 }, // Forest
+  17: { pattern:"stripes", body:["#eb172b","#ffffff"], stripeW:10 }, // Sunderland
+  18: { pattern:"solid", body:"#ffffff", sleeve:"#0a1f44" }, // Spurs
+  19: { pattern:"solid", body:"#5a2a1a", sleeve:"#5a2a1a" }, // West Ham
+  20: { pattern:"solid", body:"#c9a227", sleeve:"#1a1a1a" }, // Wolves
+};
+
+function ensureKitPattern(svgEl, key, idx, kit){
+  if(!kit || kit.pattern === "solid") return null;
+
+  const ns = "http://www.w3.org/2000/svg";
+  const defs = svgEl.querySelector("defs") || svgEl.insertBefore(document.createElementNS(ns, "defs"), svgEl.firstChild);
+
+  const patId = `kitpat_${key}_${idx}`;
+  const old = defs.querySelector(`#${patId}`);
+  if(old) old.remove();
+
+  const pattern = document.createElementNS(ns, "pattern");
+  pattern.setAttribute("id", patId);
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+
+  const stripeW = kit.stripeW || 10;
+
+  if(kit.pattern === "stripes"){
+    pattern.setAttribute("width", String(stripeW * 2));
+    pattern.setAttribute("height", "128");
+
+    const r1 = document.createElementNS(ns, "rect");
+    r1.setAttribute("x","0"); r1.setAttribute("y","0");
+    r1.setAttribute("width", String(stripeW)); r1.setAttribute("height","128");
+    r1.setAttribute("fill", kit.body[0]);
+
+    const r2 = document.createElementNS(ns, "rect");
+    r2.setAttribute("x", String(stripeW)); r2.setAttribute("y","0");
+    r2.setAttribute("width", String(stripeW)); r2.setAttribute("height","128");
+    r2.setAttribute("fill", kit.body[1]);
+
+    pattern.appendChild(r1);
+    pattern.appendChild(r2);
+  }
+
+  if(kit.pattern === "thin_stripes"){
+    const lineW = kit.lineW || 2;
+    const baseW = stripeW;
+
+    pattern.setAttribute("width", String(baseW + lineW));
+    pattern.setAttribute("height", "128");
+
+    const base = document.createElementNS(ns, "rect");
+    base.setAttribute("x","0"); base.setAttribute("y","0");
+    base.setAttribute("width", String(baseW)); base.setAttribute("height","128");
+    base.setAttribute("fill", kit.body[0]);
+
+    const line = document.createElementNS(ns, "rect");
+    line.setAttribute("x", String(baseW)); line.setAttribute("y","0");
+    line.setAttribute("width", String(lineW)); line.setAttribute("height","128");
+    line.setAttribute("fill", kit.body[1]);
+
+    pattern.appendChild(base);
+    pattern.appendChild(line);
+  }
+
+  defs.appendChild(pattern);
+  return `url(#${patId})`;
+}
+
+function applyKitStyle(svgEl, slot, idx){
+  svgEl.style.removeProperty("--kit-body-fill");
+  svgEl.style.removeProperty("--kit-sleeve-fill");
+
+  const teamId = Number(slot?.team_id || 0);
+  const kit = TEAM_KITS[teamId] || null;
+
+  if(!kit){
+    const c = slot?.color || "#d9d9d9";
+    svgEl.style.setProperty("--kit-body", c);
+    svgEl.style.setProperty("--kit-sleeve", c);
+    return;
+  }
+
+  if(kit.pattern === "solid"){
+    svgEl.style.setProperty("--kit-body", kit.body);
+    svgEl.style.setProperty("--kit-sleeve", kit.sleeve || kit.body);
+    return;
+  }
+
+  const pat = ensureKitPattern(svgEl, teamId, idx, kit);
+  if(pat) svgEl.style.setProperty("--kit-body-fill", pat);
+
+  const sleeveColor = Array.isArray(kit.body) ? kit.body[0] : kit.body;
+  svgEl.style.setProperty("--kit-sleeve", sleeveColor);
+}
+
+function makeMiniKit(teamId){
+  const wrap = document.createElement("span");
+  wrap.className = "mini-kit";
+
+  wrap.innerHTML = `
+    <svg class="kit-svg" viewBox="0 0 128 128" aria-hidden="true">
+      <defs></defs>
+      <path class="sleeve" d="M18 36 L6 54 L28 72 L36 58 L36 44 Z"></path>
+      <path class="sleeve" d="M110 36 L122 54 L100 72 L92 58 L92 44 Z"></path>
+      <path class="body"
+            d="M40 18
+               C44 28, 52 32, 64 32
+               C76 32, 84 28, 88 18
+               L110 36
+               L98 60
+               L92 54
+               L92 110
+               C92 116, 86 122, 80 122
+               L48 122
+               C42 122, 36 116, 36 110
+               L36 54
+               L30 60
+               L18 36
+               Z"></path>
+      <path class="outline"
+            d="M18 36 L6 54 L28 72 L36 58 L36 44 Z
+               M110 36 L122 54 L100 72 L92 58 L92 44 Z
+               M40 18
+               C44 28, 52 32, 64 32
+               C76 32, 84 28, 88 18
+               L110 36
+               L98 60
+               L92 54
+               L92 110
+               C92 116, 86 122, 80 122
+               L48 122
+               C42 122, 36 116, 36 110
+               L36 54
+               L30 60
+               L18 36
+               Z"></path>
+    </svg>
+  `;
+
+  const svg = wrap.querySelector("svg");
+  applyKitStyle(svg, { team_id: teamId, color: "#d9d9d9" }, `mini_${teamId}`);
+  return wrap;
+}
+
+/* ---------- build slot ---------- */
+function buildSlotEl(index, intendedPos){
+  const s = initialSlots[index] || {};
+  const el = slotTpl.content.firstElementChild.cloneNode(true);
+
+  el.dataset.index = String(index);
+  el.dataset.zone  = (index <= 10) ? "xi" : "bench";
+  el.dataset.intendedPos = (intendedPos || "");
+
+  const kitSvg = el.querySelector(".kit-svg");
+  applyKitStyle(kitSvg, s, index);
+
+  const nm = s.name || "Select player";
+  el.querySelector(".name").textContent = nm;
+
+  const priceText = (s.price != null) ? `£${Number(s.price).toFixed(1)}m` : "—";
+  const priceTagEl = el.querySelector(".priceTag");
+  if(priceTagEl) priceTagEl.textContent = priceText;
+
+  const priceEl = el.querySelector(".price");
+  if(priceEl) priceEl.textContent = priceText;
+
+  el.querySelector(".posTag").textContent = (getSlotPos(s) || (index===0 ? "GK" : "—"));
+  el.querySelector(".fixture").textContent = s.opp || "—";
+  el.querySelector(".xval").textContent = (s.xpts !== "" && s.xpts != null) ? String(s.xpts) : "—";
+
+  if(selectedSlotIndex === index) el.classList.add("selected");
+  if(captainIndex === index)     el.classList.add("is-captain");
+  if(viceIndex === index)        el.classList.add("is-vice");
+
+  attachGhostHandlers(el, index);
+
+  el.addEventListener("click", (e) => {
+    e.preventDefault();
+    const intended = el.dataset.intendedPos || "";
+    onSlotClick(index, intended);
+  });
+
+  el.addEventListener("keydown", (e) => {
+    if(e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      const intended = el.dataset.intendedPos || "";
+      onSlotClick(index, intended);
+    }
+  });
+
+  const btnCap  = el.querySelector(".act.cap");
+  const btnVice = el.querySelector(".act.vice");
+
+  if(btnCap){
+    btnCap.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCaptain(index);
+    });
+  }
+  if(btnVice){
+    btnVice.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleVice(index);
+    });
+  }
+
+  return el;
+}
+
+function renderPitch(){
+  rowGK.innerHTML = "";
+  rowDEF.innerHTML = "";
+  rowMID.innerHTML = "";
+  rowFWD.innerHTML = "";
+  rowBENCH.innerHTML = "";
+
+  rowGK.appendChild(buildSlotEl(0, "GK"));
+
+  const outIdx = [];
+  for(let i=1;i<=10;i++) outIdx.push(i);
+
+  const defaultRoles = ["DEF","DEF","DEF","MID","MID","MID","MID","MID","FWD","FWD"];
+
+  const defEls = [];
+  const midEls = [];
+  const fwdEls = [];
+
+  outIdx.forEach((slotIndex, k) => {
+    const slot = initialSlots[slotIndex] || {};
+    const pos  = getSlotPos(slot) || defaultRoles[k];
+    if(pos === "DEF") defEls.push(buildSlotEl(slotIndex, "DEF"));
+    else if(pos === "MID") midEls.push(buildSlotEl(slotIndex, "MID"));
+    else fwdEls.push(buildSlotEl(slotIndex, "FWD"));
+  });
+
+  defEls.forEach(x => rowDEF.appendChild(x));
+  midEls.forEach(x => rowMID.appendChild(x));
+  fwdEls.forEach(x => rowFWD.appendChild(x));
+
+  BENCH_INDEXES.forEach(i => {
+    const intended = (i === 11) ? "GK" : "";
+    rowBENCH.appendChild(buildSlotEl(i, intended));
+  });
+
+  updateSwapTargets();
+  updateSelectionVisualState();
+}
+
+function updateSelectionVisualState(){
+  if(selectedSlotIndex == null){
+    pitchRoot.classList.remove("has-selection");
+    clearArrow();
+  }else{
+    pitchRoot.classList.add("has-selection");
+  }
+}
+
+function updateSwapTargets(){
+  document.querySelectorAll(".slot").forEach(el => el.classList.remove("swap-target"));
+  if(selectedSlotIndex == null) return;
+
+  const selectedZone = (selectedSlotIndex <= 10) ? "xi" : "bench";
+  const targetZone   = (selectedZone === "xi") ? "bench" : "xi";
+
+  document.querySelectorAll(`.slot[data-zone="${targetZone}"]`).forEach(el => {
+    el.classList.add("swap-target");
+  });
+}
+
+function onSlotClick(index, intendedPos){
+  if(selectedSlotIndex == null){
+    selectSlot(index, intendedPos);
+    return;
+  }
+
+  if(selectedSlotIndex === index){
+    clearSelection();
+    return;
+  }
+
+  const aZone = (selectedSlotIndex <= 10) ? "xi" : "bench";
+  const bZone = (index <= 10) ? "xi" : "bench";
+
+  if(aZone !== bZone){
+    attemptSwap(selectedSlotIndex, index);
+    return;
+  }
+
+  selectSlot(index, intendedPos);
+}
+
+function selectSlot(index, intendedPos){
+  selectedSlotIndex = index;
+
+  playerSearch.disabled = false;
+  playerSearch.value = "";
+  finderQuery = "";
+
+  finderFilter = (intendedPos || "");
+  if(index === 0 || index === 11) finderFilter = "GK";
+
+  setActiveChip(finderFilter);
+
+  const finderSub = document.getElementById("finderSub");
+  if(finderSub) finderSub.textContent = "";
+
+  renderPitch();
+  loadSuggestions();
+}
+
+function clearSelection(){
+  selectedSlotIndex = null;
+  playerSearch.disabled = false;
+
+  clearArrow();
+  renderPitch();
+  loadSuggestions();
+}
+
+function attemptSwap(a, b){
+  const before = JSON.parse(JSON.stringify(initialSlots));
+
+  const tmp = initialSlots[a];
+  initialSlots[a] = initialSlots[b];
+  initialSlots[b] = tmp;
+
+  const v = validateXI(initialSlots);
+  if(!v.ok){
+    for(let i=0;i<before.length;i++) initialSlots[i] = before[i];
+    showToast(v.msg);
+    renderPitch();
+    return;
+  }
+
+  setHidden(a, initialSlots[a]?.player_id || "");
+  setHidden(b, initialSlots[b]?.player_id || "");
+
+  if(captainIndex === a) captainIndex = b;
+  else if(captainIndex === b) captainIndex = a;
+
+  if(viceIndex === a) viceIndex = b;
+  else if(viceIndex === b) viceIndex = a;
+
+  saveRoleState();
+
+  recalcBudgetFromSquad();
+  selectedSlotIndex = b;
+  renderPitch();
+  updateXiTotalPill();          // ✅ important after swaps
+  loadSuggestions();
+  showToast("Swapped");
+}
+
+function setActiveChip(val){
+  document.querySelectorAll(".chip").forEach(btn => {
+    btn.classList.toggle("active", (btn.dataset.filter || "") === (val || ""));
+  });
+}
+
+/* ---------- Finder loading ---------- */
+async function fetchPlayers(position, q){
+  const url = `/api/players?position=${encodeURIComponent(position || "")}&q=${encodeURIComponent(q || "")}`;
+  const res = await fetch(url);
+  if(!res.ok) return [];
+  return await res.json();
+}
+
+// ✅ Candidate cache (speeds up planner dramatically)
+const candidateCacheByPos = new Map(); // pos -> players[]
+
+async function getCandidatesForPos(pos){
+  const key = String(pos || "").toUpperCase();
+  if(candidateCacheByPos.has(key)) return candidateCacheByPos.get(key);
+
+  const list = (await fetchPlayers(key, "")) || [];
+  candidateCacheByPos.set(key, list);
+  return list;
+}
+
+function isPlayerAlreadyPicked(playerId, exceptIndex){
+  return initialSlots.some((s, i) =>
+    i !== exceptIndex && s?.player_id === playerId
+  );
+}
+
+function totalFinderPages(){
+  return Math.max(1, Math.ceil((finderLastPlayers.length || 0) / PAGE_SIZE));
+}
+
+function setFinderPage(p){
+  const pages = totalFinderPages();
+  finderPage = Math.min(pages, Math.max(1, p));
+  renderSuggestions(finderLastPlayers); // re-render slice
+}
+
+function updateFinderPager(){
+  const pager = document.getElementById("finderPager");
+  const prev  = document.getElementById("finderPrevBtn");
+  const next  = document.getElementById("finderNextBtn");
+  const label = document.getElementById("finderPageLabel");
+
+  const pages = totalFinderPages();
+
+  // only show if paging is needed
+  if(pager) pager.hidden = (finderLastPlayers.length <= PAGE_SIZE);
+
+  if(label) label.textContent = `${finderPage} / ${pages}`;
+  if(prev) prev.disabled = (finderPage <= 1);
+  if(next) next.disabled = (finderPage >= pages);
+}
+
+function renderSuggestions(players){
+  if(!players || players.length === 0){
+    suggestionsBody.innerHTML = `<div class="table-empty">No results.</div>`;
+    return;
+  }
+    // store full list + compute current page slice
+  finderLastPlayers = players || [];
+
+  const pages = totalFinderPages();
+  if(finderPage > pages) finderPage = pages;
+
+  const start = (finderPage - 1) * PAGE_SIZE;
+  const pageItems = finderLastPlayers.slice(start, start + PAGE_SIZE);
+
+  suggestionsBody.innerHTML = "";
+
+    pageItems.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "table-row";
+
+    const alreadyPicked = isPlayerAlreadyPicked(p.id, selectedSlotIndex);
+    if(alreadyPicked) row.classList.add("is-picked");
+
+    const owned = (p.owned_by != null)
+      ? `${Number(p.owned_by).toFixed(1)}%`
+      : "—";
+
+    row.innerHTML = `
+      <div class="player-cell" title="${p.name}">
+        <span class="mini-kit" data-team-id="${p.team_id}"></span>
+        <strong class="player-name">${p.name}</strong>
+      </div>
+      <div>${shortTeamName(p.team)}</div>
+      <div class="right">${p.position || ""}</div>
+      <div class="right">£${Number(p.price).toFixed(1)}m</div>
+      <div class="right">${owned}</div>
+    `;
+
+    if(!alreadyPicked){
+      row.addEventListener("click", () => assignPlayerToSelected(p));
+    }
+
+    suggestionsBody.appendChild(row);
+
+    const miniTarget = row.querySelector(".mini-kit");
+    if(miniTarget){
+      const kitEl = makeMiniKit(p.team_id);
+      miniTarget.replaceWith(kitEl);
+    }
+  });
+  updateFinderPager();
+}
+
+async function loadSuggestions(){
+  let apiPos = finderFilter || "";
+
+  if(!apiPos && selectedSlotIndex != null){
+    const st = (slotTypes && slotTypes[selectedSlotIndex])
+      ? String(slotTypes[selectedSlotIndex]).toUpperCase()
+      : "";
+    apiPos = st;
+  }
+
+  const list = await fetchPlayers(apiPos, finderQuery);
+
+  finderLastPlayers = list || [];
+  finderPage = 1;
+
+  renderSuggestions(finderLastPlayers);
+}
+
+function squadCounts(slots){
+  const counts = { GK:0, DEF:0, MID:0, FWD:0 };
+  slots.forEach(s => {
+    const pos = (s?.pos || "").toUpperCase();
+    if(counts[pos] != null) counts[pos]++;
+  });
+  return counts;
+}
+
+function teamCounts(slots){
+  const counts = {};
+  slots.forEach(s => {
+    const tid = s?.team_id;
+    if(!tid) return;
+    counts[tid] = (counts[tid] || 0) + 1;
+  });
+  return counts;
+}
+
+async function assignPlayerToSelected(p){
+  if(selectedSlotIndex == null) return;
+
+  // Prevent duplicates
+  if(isPlayerAlreadyPicked(p.id, selectedSlotIndex)){
+    showToast("This player is already in your squad.");
+    return;
+  }
+
+  const pPos = (p.position || "").toUpperCase();
+
+  // GK slot enforcement
+  if(pPos === "GK" && !GK_SLOTS.includes(selectedSlotIndex)){
+    showToast("Goalkeepers can only be placed in GK slots.");
+    return;
+  }
+  if(GK_SLOTS.includes(selectedSlotIndex) && pPos !== "GK"){
+    showToast("This slot is for a goalkeeper.");
+    return;
+  }
+
+  // Tentatively assign player
+  initialSlots[selectedSlotIndex] = {
+    ...initialSlots[selectedSlotIndex],
+    name: p.name,
+    player_id: p.id,
+    team: p.team,
+    team_id: p.team_id,
+    price: p.price,
+    photo_url: p.photo_url || p.photo || null,
+    color: p.team_color || initialSlots[selectedSlotIndex]?.color || "#d9d9d9",
+    pos: p.position,
+    opp: "Loading…",
+    xpts: "…"
+  };
+
+  // Enforce squad limits (2 GK / 5 DEF / 5 MID / 3 FWD)
+  const c = squadCounts(initialSlots);
+  if(c.GK > 2 || c.DEF > 5 || c.MID > 5 || c.FWD > 3){
+    initialSlots[selectedSlotIndex] = {
+      player_id: "",
+      name: null,
+      pos: null,
+      price: null,
+      opp: "—",
+      xpts: "",
+      color: "#d9d9d9",
+      team_id: null
+    };
+    setHidden(selectedSlotIndex, "");
+    showToast("Squad limit exceeded (2 GK / 5 DEF / 5 MID / 3 FWD).");
+    renderPitch();
+    updateXiTotalPill();
+    return;
+  }
+
+  // Enforce max 3 players per team
+  const t = teamCounts(initialSlots);
+  if((t[p.team_id] || 0) > 3){
+    initialSlots[selectedSlotIndex] = {
+      player_id: "",
+      name: null,
+      pos: null,
+      price: null,
+      opp: "—",
+      xpts: "",
+      color: "#d9d9d9",
+      team_id: null
+    };
+    setHidden(selectedSlotIndex, "");
+    showToast(`Max 3 players allowed from ${p.team}.`);
+    renderPitch();
+    updateXiTotalPill();
+    return;
+  }
+
+  // Persist hidden input
+  setHidden(selectedSlotIndex, p.id);
+
+  // Fetch opponent + xPts
+  try{
+    const res = await fetch(
+      `/api/player_xpts?player_id=${encodeURIComponent(p.id)}&gw=${encodeURIComponent(currentGW ?? "")}`
+    );
+    if(res.ok){
+      const data = await res.json();
+      initialSlots[selectedSlotIndex].opp  = data.opp ?? "—";
+      initialSlots[selectedSlotIndex].xpts = (data.xpts ?? "");
+    }else{
+      initialSlots[selectedSlotIndex].opp  = "—";
+      initialSlots[selectedSlotIndex].xpts = "";
+    }
+  }catch(e){
+    initialSlots[selectedSlotIndex].opp  = "—";
+    initialSlots[selectedSlotIndex].xpts = "";
+  }
+
+  // Clear selection
+  selectedSlotIndex = null;
+  recalcBudgetFromSquad();
+  renderPitch();
+  updateXiTotalPill();
+  loadSuggestions();
+
+  showToast(`${p.name} added`);
+}
+
+function shortTeamName(team){
+  const t = String(team || "").trim();
+
+  // Special case
+  if(/^manchester united$/i.test(t)) return "MAN U";
+  if(/^manchester city$/i.test(t))   return "MAN C";
+
+  // If already short-ish, keep it neat
+  if(t.length <= 3) return t.toUpperCase();
+
+  // Default: first 3 letters
+  return t.slice(0, 3).toUpperCase();
+}
+
+
+let importedTeamMeta = {
+  team_id: null,
+  team_name: null,
+  gw: null,
+  bank: null,
+  squad_value: null
+};
+
+function renderPlannerMeta(){
+  const el = document.getElementById("plannerMeta");
+  if(!el) return;
+
+  // When not imported: show the hint
+  if(!importedTeamMeta?.team_id){
+    el.innerHTML = `
+      <div class="meta-empty">
+        Import your team to get detailed transfer advice (budget + max-3-per-team enforced).
+      </div>
+    `;
+    return;
+  }
+
+  // When imported: remove meta completely (no squad value / bank shown)
+  el.innerHTML = "";
+}
+
+function renderTeamOverlay(){
+  const wrap = document.getElementById("teamOverlay");
+  const nameEl = document.getElementById("teamOverlayName");
+  if(!wrap || !nameEl) return;
+
+  if(!importedTeamMeta?.team_id || !importedTeamMeta?.team_name){
+    wrap.hidden = true;
+    nameEl.textContent = "—";
+    return;
+  }
+
+  wrap.hidden = false;
+  nameEl.textContent = importedTeamMeta.team_name;
+}
+
+function recommendCapVice(){
+  const xi = [];
+  for(let i=0;i<=10;i++){
+    const s = initialSlots[i];
+    const n = xptsNum(s);
+    if(s?.player_id && Number.isFinite(n)) xi.push({ idx:i, x:n });
+  }
+  xi.sort((a,b)=> b.x - a.x);
+
+  const cap = xi[0] || null;
+  const vice = xi[1] || null;
+
+  const el = document.getElementById("capViceBox");
+  if(!el) return;
+
+  if(!cap){
+    el.innerHTML = `<div class="cap-empty">Pick players (xPts needed) to get captain recommendations.</div>`;
+    return;
+  }
+
+  const capSlot  = initialSlots[cap.idx] || {};
+  const viceSlot = (vice ? (initialSlots[vice.idx] || {}) : {});
+
+  // Optional photo support: use slot.photo_url (or slot.photo) if your backend provides it
+  const capPhoto  = capSlot.photo_url || capSlot.photo || "";
+  const vicePhoto = viceSlot.photo_url || viceSlot.photo || "";
+
+  const initials = (name) => {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if(parts.length === 0) return "—";
+    if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  };
+
+  const avatarHtml = (photoUrl, name) => {
+    if(photoUrl){
+      return `<div class="cap-avatar"><img src="${photoUrl}" alt="${name}"></div>`;
+    }
+    return `<div class="cap-avatar">${initials(name)}</div>`;
+  };
+
+  el.innerHTML = `
+    <div class="cap-grid">
+
+      <div class="cap-card cap">
+        <div class="cap-head">
+          ${avatarHtml(capPhoto, capSlot.name)}
+          <div>
+            <div class="cap-tag">CAPTAIN</div>
+            <div class="cap-name">${capSlot.name || "—"}</div>
+            <div class="cap-sub">${capSlot.opp ?? "—"}</div>
+          </div>
+        </div>
+        <div class="cap-x">Expected: <strong>${Number(cap.x).toFixed(2)}</strong> pts</div>
+        <div class="cap-why">Highest projected points in your XI.</div>
+      </div>
+
+      <div class="cap-card vice">
+        <div class="cap-head">
+          ${avatarHtml(vicePhoto, viceSlot.name)}
+          <div>
+            <div class="cap-tag">VICE</div>
+            <div class="cap-name">${viceSlot.name || "—"}</div>
+            <div class="cap-sub">${viceSlot.opp ?? "—"}</div>
+          </div>
+        </div>
+        <div class="cap-x">Expected: <strong>${vice ? Number(vice.x).toFixed(2) : "—"}</strong> pts</div>
+        <div class="cap-why">Second-best projection as backup.</div>
+      </div>
+
+    </div>
+  `;
+}
+
+function autoSetCapViceFromXI(){
+  // pick top 2 xPts in XI
+  const xi = [];
+  for(let i=0;i<=10;i++){
+    const s = initialSlots[i];
+    const n = xptsNum(s);
+    if(s?.player_id && Number.isFinite(n)){
+      xi.push({ idx: i, x: n });
+    }
+  }
+
+  xi.sort((a,b) => b.x - a.x);
+
+  const cap  = xi[0] || null;
+  const vice = xi[1] || null;
+
+  captainIndex = cap ? cap.idx : null;
+  viceIndex    = vice ? vice.idx : null;
+
+  // safety: never same
+  if(captainIndex != null && viceIndex === captainIndex){
+    viceIndex = null;
+  }
+
+  saveRoleState();
+  renderPitch();        // updates badges
+  recommendCapVice();   // updates the planner cap/vice UI box
+}
+
+
+async function recalcAllForGW(){
+  if(currentGW == null) return;
+
+  // update pill immediately
+  setGwPill();
+
+  const xiPill = document.getElementById("xiTotalPill");
+  if(xiPill) xiPill.textContent = "XI Total: …";
+
+  // fetch xpts/opp for each picked player
+  const tasks = initialSlots.map(async (s, i) => {
+    const pid = s?.player_id;
+    if(!pid) return;
+
+    try{
+      const res = await fetch(`/api/player_xpts?player_id=${encodeURIComponent(pid)}&gw=${encodeURIComponent(currentGW)}`);
+      if(!res.ok) return;
+      const data = await res.json();
+
+      initialSlots[i].opp = data.opp ?? "—";
+      initialSlots[i].xpts = (data.xpts ?? "");
+    }catch(e){}
+  });
+
+    await Promise.all(tasks);
+
+    // ✅ Do NOT auto-run the heavy planner here.
+    // Just update the label and show "click update" if imported.
+    initPlannerUI?.();
+    const listEl = document.getElementById("tpList");
+    if(importedTeamMeta?.team_id && listEl){
+        listEl.innerHTML = `<div class="tp-empty">Click “Update team” to calculate transfers.</div>`;
+        setPlannerLoading(false);
+    }
+
+    renderPitch();
+
+  updateXiTotalPill();
+  loadSuggestions();
+  recommendCapVice();
+  if(importedTeamMeta?.team_id) initPlannerUI();
+  if(importedTeamMeta?.team_id){
+  }
+}
+
+function fetchWithTimeout(url, ms = 12000){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal })
+    .finally(() => clearTimeout(t));
+}
+
+function sumXptsCacheKey(pid, gwStart, weeks){
+  return `sum|${pid}|${gwStart}|${weeks}`;
+}
+
+const sumCache = new Map(); // sum over horizon cache
+
+async function sumXpts(pid, gwStart, weeks){
+  const key = sumXptsCacheKey(pid, gwStart, weeks);
+  if(sumCache.has(key)) return sumCache.get(key);
+
+  let total = 0;
+  let validWeeks = 0;
+
+  for(let k=0;k<weeks;k++){
+    const gw = gwStart + k;
+    const x = await getXpts(pid, gw);
+    const n = toFiniteXpts(x?.xpts);
+
+    if(Number.isFinite(n)){
+      total += n;
+      validWeeks++;
+    }
+  }
+
+  // ✅ CRITICAL: require a full horizon (prevents “partial data” gains)
+  const out = (validWeeks === weeks) ? total : null;
+
+  sumCache.set(key, out);
+  return out;
+}
+
+
+function simulateTeamCountsAfterTransfer(outIdx, inTeamId){
+  const before = teamCounts(initialSlots); // your existing helper
+  const outTeam = String(initialSlots[outIdx]?.team_id || "");
+  const inTeam  = String(inTeamId || "");
+
+  const after = { ...before };
+  if(outTeam) after[outTeam] = Math.max(0, (after[outTeam] || 0) - 1);
+  if(inTeam)  after[inTeam] = (after[inTeam] || 0) + 1;
+
+  return after;
+}
+
+function budgetAllows(outIdx, inPrice){
+  const outPrice = Number(initialSlots[outIdx]?.price || 0);
+  const bank = Number(importedTeamMeta?.bank || 0);
+  return inPrice <= (outPrice + bank);
+}
+
+// ===============================
+// NEW PLANNER: Best 1/2/3 transfers (chosen once)
+// then evaluate over 1..5 GWs
+// ===============================
+// Show 5 individual upcoming GWs (GWx..GWx+4)
+const DISPLAY_GW_WEEKS = 5;
+
+// Still choose best plans using a 5GW total (same as display span)
+const PICK_HORIZON_WEEKS = DISPLAY_GW_WEEKS;
+
+function plannerStartGW(){
+  // Always plan from the upcoming GW (first GW where a transfer "now" applies)
+  return (Number.isFinite(upcomingGW) ? upcomingGW : currentGW);
+}
+
+
+function ownedIdSet(){
+  return new Set(initialSlots.map(s => String(s?.player_id || "")).filter(Boolean));
+}
+
+function cloneTeamCounts(counts){
+  return { ...counts };
+}
+
+function applyTeamCountDelta(counts, outIdx, inTeamId){
+  const outTeam = String(initialSlots[outIdx]?.team_id || "");
+  const inTeam  = String(inTeamId || "");
+  if(outTeam) counts[outTeam] = Math.max(0, (counts[outTeam] || 0) - 1);
+  if(inTeam)  counts[inTeam]  = (counts[inTeam] || 0) + 1;
+  return counts;
+}
+
+function teamLimitOk(counts){
+  // max 3 per team
+  for(const k in counts){
+    if((counts[k] || 0) > 3) return false;
+  }
+  return true;
+}
+
+function budgetAfterMove(bank, outIdx, inPrice){
+  const outPrice = Number(initialSlots[outIdx]?.price || 0);
+  const newBank = bank + outPrice - Number(inPrice || 0);
+  return newBank;
+}
+
+async function moveGain(outIdx, inPlayer, gwStart, weeks){
+  const outSlot = initialSlots[outIdx];
+  if(!outSlot?.player_id) return null;
+
+  const outPid = String(outSlot.player_id);
+  const inPid  = String(inPlayer?.id || "");
+  if(!inPid || inPid === outPid) return null;
+
+  const outSum = await sumXpts(outPid, gwStart, weeks);
+  const inSum  = await sumXpts(inPid,  gwStart, weeks);
+  if(outSum == null || inSum == null) return null;
+
+  return {
+    outIdx,
+    outPid,
+    outName: outSlot.name,
+    outTeam: outSlot.team,
+    outPrice: Number(outSlot.price || 0),
+
+    inPid,
+    inName: inPlayer.name,
+    inTeam: inPlayer.team,
+    inTeamId: inPlayer.team_id,
+    inPrice: Number(inPlayer.price || 0),
+
+    gain: inSum - outSum
+  };
+}
+
+/**
+ * Find best 1 transfer plan (single move) for PICK_HORIZON_WEEKS
+ */
+async function bestPlan1(onProgress=null){
+  if(!importedTeamMeta?.team_id || currentGW == null) return null;
+
+  const gwStart = plannerStartGW();
+  if(!Number.isFinite(gwStart)) return null;
+
+  const owned   = ownedIdSet();
+  const counts0 = teamCounts(initialSlots);
+  const bank0   = Number(importedTeamMeta?.bank || 0);
+
+  const outIndexes = [];
+  for(let i=0;i<15;i++){
+    if(EXCLUDED_OUT_INDEXES.has(i)) continue;
+    if(initialSlots[i]?.player_id) outIndexes.push(i);
+  }
+
+
+  const POOL_SIZE = 60;
+  const singles = [];
+
+  // Build a list of ALL valid single moves (same approach as bestPlan2 shortlist)
+  for(const outIdx of outIndexes){
+    const outPos = (initialSlots[outIdx]?.pos || "").toUpperCase();
+    if(!outPos) continue;
+
+    const candidates = await getCandidatesForPos(outPos);
+    const pool = (candidates || []).slice(0, POOL_SIZE);
+
+    for(const p of pool){
+      if(onProgress) onProgress(`1T: ${initialSlots[outIdx]?.name} → ${p.name}`);
+
+      const inPid = String(p?.id || "");
+      if(!inPid) continue;
+      if(owned.has(inPid)) continue;
+
+      // budget
+      const newBank = budgetAfterMove(bank0, outIdx, p.price);
+      if(newBank < 0) continue;
+
+      // team limit
+      const c = cloneTeamCounts(counts0);
+      applyTeamCountDelta(c, outIdx, p.team_id);
+      if(!teamLimitOk(c)) continue;
+
+      // gain (requires full horizon data)
+      const g = await moveGain(outIdx, p, gwStart, PICK_HORIZON_WEEKS);
+      if(!g) continue;
+
+      singles.push({ ...g, bank_after: newBank });
+    }
+  }
+
+  if(singles.length === 0) return null;
+
+  singles.sort((a,b)=> b.gain - a.gain);
+  const best = singles[0];
+
+  if(!best || best.gain <= 0) return null;
+
+  return {
+    transfers: [best],
+    bank_after: best.bank_after,
+    gain_5: best.gain
+  };
+}
+
+
+/**
+ * Find best 2 transfer plan.
+ * Approach: build from best single moves shortlist, then pair them.
+ */
+async function bestPlan2(onProgress=null){
+  if(!importedTeamMeta?.team_id || currentGW == null) return null;
+
+  const owned = ownedIdSet();
+  const counts0 = teamCounts(initialSlots);
+  const bank0 = Number(importedTeamMeta?.bank || 0);
+
+  const outIndexes = [];
+  for(let i=0;i<15;i++){
+    if(EXCLUDED_OUT_INDEXES.has(i)) continue;
+    if(initialSlots[i]?.player_id) outIndexes.push(i);
+  }
+
+
+  const POOL_SIZE = 50;
+  const SINGLE_SHORTLIST = 80; // total best singles to build pairs from
+  const singles = [];
+
+  // build singles list first (valid under bank0)
+  for(const outIdx of outIndexes){
+    const outPos = (initialSlots[outIdx]?.pos || "").toUpperCase();
+    if(!outPos) continue;
+
+    const candidates = await getCandidatesForPos(outPos);
+    const pool = (candidates || []).slice(0, POOL_SIZE);
+
+    for(const p of pool){
+      if(onProgress) onProgress(`2T shortlist: ${initialSlots[outIdx]?.name} → ${p.name}`);
+
+      const inPid = String(p?.id || "");
+      if(!inPid) continue;
+      if(owned.has(inPid)) continue;
+
+      const newBank = budgetAfterMove(bank0, outIdx, p.price);
+      if(newBank < 0) continue;
+
+      const c = cloneTeamCounts(counts0);
+      applyTeamCountDelta(c, outIdx, p.team_id);
+      if(!teamLimitOk(c)) continue;
+
+      const g = await moveGain(outIdx, p, plannerStartGW(), PICK_HORIZON_WEEKS);
+      if(!g) continue;
+
+      singles.push({ ...g, bank_after: newBank });
+    }
+  }
+
+  singles.sort((a,b)=> b.gain - a.gain);
+  const topSingles = singles.slice(0, SINGLE_SHORTLIST);
+  if(topSingles.length === 0) return null;
+
+  let best = null;
+
+  for(let i=0;i<topSingles.length;i++){
+    const a = topSingles[i];
+
+    for(let j=i+1;j<topSingles.length;j++){
+      const b = topSingles[j];
+
+      if(onProgress) onProgress(`2T: (${a.outName}→${a.inName}) + (${b.outName}→${b.inName})`);
+
+      // outs must be different
+      if(a.outIdx === b.outIdx) continue;
+
+      // ins must be different
+      if(a.inPid === b.inPid) continue;
+
+      // can't bring in a player you're also selling in other move
+      if(a.inPid === b.outPid) continue;
+      if(b.inPid === a.outPid) continue;
+
+      // team count check combined
+      const c = cloneTeamCounts(counts0);
+      applyTeamCountDelta(c, a.outIdx, a.inTeamId);
+      applyTeamCountDelta(c, b.outIdx, b.inTeamId);
+      if(!teamLimitOk(c)) continue;
+
+      // budget combined
+      let bank1 = budgetAfterMove(bank0, a.outIdx, a.inPrice);
+      bank1 = budgetAfterMove(bank1, b.outIdx, b.inPrice);
+      if(bank1 < 0) continue;
+
+      const gain = a.gain + b.gain;
+
+      if(!best || gain > best.gain_5){
+        best = {
+          transfers: [a, b],
+          bank_after: bank1,
+          gain_5: gain
+        };
+      }
+    }
+  }
+
+  if(best && best.gain_5 <= 0) return null;
+  return best;
+}
+
+/**
+ * Find best 3 transfer plan.
+ * Approach: build from best pairs shortlist, then add one more move.
+ */
+async function bestPlan3(onProgress=null){
+  if(!importedTeamMeta?.team_id || currentGW == null) return null;
+
+  const owned = ownedIdSet();
+  const counts0 = teamCounts(initialSlots);
+  const bank0 = Number(importedTeamMeta?.bank || 0);
+
+  // reuse plan2 shortlist idea, but keep it bounded
+  const base2 = await bestPlan2((s)=> onProgress && onProgress(`3T base: ${s}`));
+  if(!base2?.transfers?.length) return null;
+
+  // We'll search around: take top singles again and try add to best pair
+  // (fast + good enough). If you want exact best triple, we can expand later.
+  const outIndexes = [];
+  for(let i=0;i<15;i++){
+    if(EXCLUDED_OUT_INDEXES.has(i)) continue;
+    if(initialSlots[i]?.player_id) outIndexes.push(i);
+  }
+
+
+  const POOL_SIZE = 45;
+  const SINGLE_SHORTLIST = 90;
+  const singles = [];
+
+  for(const outIdx of outIndexes){
+    const outPos = (initialSlots[outIdx]?.pos || "").toUpperCase();
+    if(!outPos) continue;
+
+    const candidates = await getCandidatesForPos(outPos);
+    const pool = (candidates || []).slice(0, POOL_SIZE);
+
+    for(const p of pool){
+      if(onProgress) onProgress(`3T shortlist: ${initialSlots[outIdx]?.name} → ${p.name}`);
+
+      const inPid = String(p?.id || "");
+      if(!inPid) continue;
+      if(owned.has(inPid)) continue;
+
+      const g = await moveGain(outIdx, p, plannerStartGW(), PICK_HORIZON_WEEKS);
+      if(!g) continue;
+
+      singles.push(g);
+    }
+  }
+
+  singles.sort((a,b)=> b.gain - a.gain);
+  const topSingles = singles.slice(0, SINGLE_SHORTLIST);
+
+  let best = null;
+
+  // try adding one move to the best 2-transfer plan
+  const [a,b] = base2.transfers;
+
+  for(const cMove of topSingles){
+    if(onProgress) onProgress(`3T: add (${cMove.outName}→${cMove.inName})`);
+
+    // outs all distinct
+    if(cMove.outIdx === a.outIdx || cMove.outIdx === b.outIdx) continue;
+
+    // ins all distinct
+    const inSet = new Set([a.inPid, b.inPid]);
+    if(inSet.has(cMove.inPid)) continue;
+
+    // no cross sell/buy conflicts
+    const outSet = new Set([a.outPid, b.outPid]);
+    if(outSet.has(cMove.inPid)) continue;
+    if(cMove.outPid === a.inPid || cMove.outPid === b.inPid) continue;
+
+    // team counts combined
+    const counts = cloneTeamCounts(counts0);
+    applyTeamCountDelta(counts, a.outIdx, a.inTeamId);
+    applyTeamCountDelta(counts, b.outIdx, b.inTeamId);
+    applyTeamCountDelta(counts, cMove.outIdx, cMove.inTeamId);
+    if(!teamLimitOk(counts)) continue;
+
+    // budget combined
+    let bank = bank0;
+    bank = budgetAfterMove(bank, a.outIdx, a.inPrice);
+    bank = budgetAfterMove(bank, b.outIdx, b.inPrice);
+    bank = budgetAfterMove(bank, cMove.outIdx, cMove.inPrice);
+    if(bank < 0) continue;
+
+    const gain = a.gain + b.gain + cMove.gain;
+
+    if(!best || gain > best.gain_5){
+      best = {
+        transfers: [a,b,cMove],
+        bank_after: bank,
+        gain_5: gain
+      };
+    }
+  }
+
+  if(best && best.gain_5 <= 0) return null;
+  return best;
+}
+
+async function evaluatePlanPerGW(plan){
+  if(!plan?.transfers?.length) return null;
+
+  const gw0 = plannerStartGW();
+  if(!Number.isFinite(gw0)) return null;
+
+  const perGw = {}; // gw -> delta
+
+  for(let k=0; k<DISPLAY_GW_WEEKS; k++){
+    const gw = gw0 + k;
+
+    let totalDelta = 0;
+    let ok = true;
+
+    for(const t of plan.transfers){
+      const outX = await getXpts(String(t.outPid), gw);
+      const inX  = await getXpts(String(t.inPid),  gw);
+
+      const outN = toFiniteXpts(outX?.xpts);
+      const inN  = toFiniteXpts(inX?.xpts);
+
+      // if any missing for this GW, show "—" for that GW pill
+      if(!Number.isFinite(outN) || !Number.isFinite(inN)){
+        ok = false;
+        break;
+      }
+
+      totalDelta += (inN - outN);
+    }
+
+    perGw[gw] = ok ? totalDelta : null;
+  }
+
+  // Optional: also compute total across displayed GWs (if you want it later)
+  const total = Object.values(perGw).every(v => v != null)
+    ? Object.values(perGw).reduce((a,b)=>a+b, 0)
+    : null;
+
+  return { perGw, total };
+}
+
+function renderPlanBlock(title, plan, evals){
+  const moves = (plan?.transfers || []);
+
+  const movesHtml = moves.map((t) => `
+    <div class="tp-row">
+      <div>
+        <div class="tp-strong">IN: ${t.inName}</div>
+        <div class="tp-small">${t.inTeam} • £${Number(t.inPrice).toFixed(1)}m</div>
+      </div>
+      <div>
+        <div class="tp-strong">OUT: ${t.outName}</div>
+        <div class="tp-small">${t.outTeam} • £${Number(t.outPrice).toFixed(1)}m</div>
+      </div>
+      <div class="tp-pill">${fmtSigned(Number(t.gain))}</div>
+    </div>
+  `).join("");
+
+  const gw0 = plannerStartGW();
+  const horizonHtml = Array.from({length: DISPLAY_GW_WEEKS}, (_,k)=> gw0 + k).map(gw => {
+    const v = evals?.perGw?.[gw];
+    return `<span class="tp-pill">GW ${gw} ${fmtSigned(Number(v))}</span>`;
+  }).join("");
+
+
+  return `
+    <div class="tp-section">
+      <div class="tp-section-head">
+        <div class="tp-strong">${title}</div>
+      </div>
+
+      <div class="tp-horizons">
+        ${horizonHtml}
+      </div>
+
+      ${movesHtml || `<div class="tp-empty">No suggestions found.</div>`}
+    </div>
+  `;
+}
+
+
+async function runPlannerBest123(){
+  const listEl = document.getElementById("tpList");
+  if(!listEl) return;
+
+  // ✅ If not imported or GW missing: force-hide spinner + button state
+  if(!importedTeamMeta?.team_id){
+    setPlannerLoading(false);
+    listEl.innerHTML = `<div class="tp-empty">Import your team to see best transfers.</div>`;
+    return;
+  }
+  if(currentGW == null){
+    setPlannerLoading(false);
+    listEl.innerHTML = `<div class="tp-empty">Gameweek not loaded yet.</div>`;
+    return;
+  }
+
+  // reset caches for a fresh run
+  candidateCacheByPos.clear();
+  sumCache.clear();
+
+  // ✅ HARD GUARANTEE: spinner always stops, even if an error happens
+  setPlannerLoading(true, "Starting…");
+  listEl.innerHTML = "";
+
+  try{
+    setPlannerLoading(true, "Finding best 1-transfer plan…");
+    const plan1 = await bestPlan1((s)=> setPlannerLoading(true, s));
+    const eval1 = plan1 ? await evaluatePlanPerGW(plan1) : null;
+
+    setPlannerLoading(true, "Finding best 2-transfer plan…");
+    const plan2 = await bestPlan2((s)=> setPlannerLoading(true, s));
+    const eval2 = plan2 ? await evaluatePlanPerGW(plan2) : null;
+
+    setPlannerLoading(true, "Finding best 3-transfer plan…");
+    const plan3 = await bestPlan3((s)=> setPlannerLoading(true, s));
+    const eval3 = plan3 ? await evaluatePlanPerGW(plan3) : null;
+
+    listEl.innerHTML =
+      renderPlanBlock("1 Suggested Transfer", plan1, eval1) +
+      renderPlanBlock("2 Suggested Transfers", plan2, eval2) +
+      renderPlanBlock("3 Suggested Transfers", plan3, eval3);
+
+  } catch (err){
+    console.error("Planner error:", err);
+    listEl.innerHTML = `<div class="tp-empty">Planner failed (see console).</div>`;
+  } finally {
+    // ✅ ALWAYS runs
+    setPlannerLoading(false);
+  }
+}
+
+let plannerRunning = false;
+
+function setPlannerLoading(isLoading, status = ""){
+  const loadingEl = document.getElementById("tpLoadingField");
+  const statusEl  = document.getElementById("tpStatusField");
+  const btn       = document.getElementById("tpUpdateBtnField");
+
+  plannerRunning = isLoading;
+
+  // Never show loader unless team imported
+  if(!importedTeamMeta?.team_id){
+    if(loadingEl) loadingEl.hidden = true;
+    if(btn) btn.hidden = true;
+    return;
+  }
+
+  if(btn){
+    btn.hidden = false;
+    btn.disabled = isLoading;
+  }
+
+  if(loadingEl){
+    loadingEl.hidden = !isLoading;
+  }
+
+  if(statusEl){
+    statusEl.textContent = status || "";
+  }
+}
+
+
+/* ---------- events ---------- */
+playerSearch.addEventListener("input", () => {
+  finderQuery = playerSearch.value.trim();
+  loadSuggestions();
+});
+
+document.querySelectorAll(".chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    finderFilter = btn.dataset.filter || "";
+    setActiveChip(finderFilter);
+    loadSuggestions();
+  });
+});
+
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape"){
+    clearSelection();
+  }
+  if(selectedSlotIndex != null){
+    const k = (e.key || "").toLowerCase();
+    if(k === "c"){ e.preventDefault(); setCaptain(selectedSlotIndex); }
+    if(k === "v"){ e.preventDefault(); setVice(selectedSlotIndex); }
+  }
+});
+
+pitchRoot.addEventListener("click", (e) => {
+  if(e.target.closest(".slot")) return;
+  clearSelection();
+});
+
+window.addEventListener("resize", () => clearArrow());
+window.addEventListener("scroll",  () => clearArrow(), { passive: true });
+
+function enhanceTeam(){
+  if(!allSlotsFilled()){
+    showToast("Fill all 15 players first.");
+    return;
+  }
+  if(!allXptsReady()){
+    showToast("Click 'Calculate Total Points' first (xPts needed).");
+    return;
+  }
+
+  const capPid  = (captainIndex != null) ? initialSlots[captainIndex]?.player_id : null;
+  const vicePid = (viceIndex != null)    ? initialSlots[viceIndex]?.player_id    : null;
+
+  const gks  = initialSlots.filter(s => (s?.pos || "").toUpperCase() === "GK");
+  const defs = initialSlots.filter(s => (s?.pos || "").toUpperCase() === "DEF");
+  const mids = initialSlots.filter(s => (s?.pos || "").toUpperCase() === "MID");
+  const fwds = initialSlots.filter(s => (s?.pos || "").toUpperCase() === "FWD");
+
+  if(gks.length !== 2){
+    showToast("Need exactly 2 goalkeepers in squad.");
+    return;
+  }
+
+  const gkSorted = [...gks].sort((a,b) => xptsNum(b) - xptsNum(a));
+  const gkXI     = gkSorted[0];
+  const gkBench  = gkSorted[1];
+
+  const defsSorted = [...defs].sort((a,b)=> xptsNum(b)-xptsNum(a));
+  const midsSorted = [...mids].sort((a,b)=> xptsNum(b)-xptsNum(a));
+  const fwdsSorted = [...fwds].sort((a,b)=> xptsNum(b)-xptsNum(a));
+
+  let best = null;
+  for(let defN=3; defN<=5; defN++){
+    for(let midN=2; midN<=5; midN++){
+      for(let fwdN=1; fwdN<=3; fwdN++){
+        if(defN + midN + fwdN !== 10) continue;
+        if(defsSorted.length < defN) continue;
+        if(midsSorted.length < midN) continue;
+        if(fwdsSorted.length < fwdN) continue;
+
+        const xiOut = [
+          ...defsSorted.slice(0, defN),
+          ...midsSorted.slice(0, midN),
+          ...fwdsSorted.slice(0, fwdN),
+        ];
+
+        const xiSum = xiOut.reduce((acc,s)=> acc + xptsNum(s), 0) + xptsNum(gkXI);
+
+        const usedIds = new Set(xiOut.map(s => s.player_id));
+        const remainingOut = [...defsSorted, ...midsSorted, ...fwdsSorted]
+          .filter(s => !usedIds.has(s.player_id))
+          .sort((a,b)=> xptsNum(b)-xptsNum(a));
+
+        if(remainingOut.length < 3) continue;
+        const benchOut = remainingOut.slice(0, 3);
+
+        if(!best || xiSum > best.sum){
+          best = { defN, midN, fwdN, sum: xiSum, xiOutfield: xiOut, benchOutfield: benchOut };
+        }
+      }
+    }
+  }
+
+  if(!best){
+    showToast("Could not form a valid XI with current squad.");
+    return;
+  }
+
+  const newSlots = Array(15).fill(null).map(()=>({
+    name: null, player_id:"", xpts:"", team_id:null, price:null, opp:"—", color:"#d9d9d9", pos:null
+  }));
+
+  newSlots[0]  = { ...gkXI };
+  newSlots[11] = { ...gkBench };
+
+  const xiOutSorted = [...best.xiOutfield].sort((a,b)=> xptsNum(b)-xptsNum(a));
+  for(let i=0;i<10;i++){
+    newSlots[1+i] = { ...xiOutSorted[i] };
+  }
+
+  const benchOutSorted = [...best.benchOutfield].sort((a,b)=> xptsNum(b)-xptsNum(a));
+  for(let j=0;j<3;j++){
+    newSlots[12+j] = { ...benchOutSorted[j] };
+  }
+
+  for(let i=0;i<15;i++){
+    initialSlots[i] = newSlots[i];
+    setHidden(i, newSlots[i]?.player_id || "");
+  }
+
+  captainIndex = null;
+  viceIndex    = null;
+
+  if(capPid){
+    const idx = initialSlots.findIndex(s => s?.player_id === capPid);
+    if(idx >= 0 && idx <= 10) captainIndex = idx;
+  }
+  if(vicePid){
+    const idx = initialSlots.findIndex(s => s?.player_id === vicePid);
+    if(idx >= 0 && idx <= 10){
+      if(captainIndex !== idx) viceIndex = idx;
+    }
+  }
+
+  saveRoleState();
+  recalcBudgetFromSquad();
+  selectedSlotIndex = null;
+  renderPitch();
+  updateXiTotalPill();          // ✅ important after enhance
+  loadSuggestions();
+  showToast(`Enhanced XI (${best.defN}-${best.midN}-${best.fwdN})`);
+}
+
+(async function init(){
+  loadRoleState();
+
+  // ✅ ensure field controls start hidden
+  setPlannerLoading(false);
+    // Finder pager arrows
+  const fPrev = document.getElementById("finderPrevBtn");
+  const fNext = document.getElementById("finderNextBtn");
+
+  if(fPrev) fPrev.addEventListener("click", () => setFinderPage(finderPage - 1));
+  if(fNext) fNext.addEventListener("click", () => setFinderPage(finderPage + 1));
+
+
+    // GW nav
+  const prevBtn = document.getElementById("prevGwBtn");
+  const nextBtn = document.getElementById("nextGwBtn");
+
+  if(prevBtn){
+    prevBtn.addEventListener("click", async () => {
+      const gw = getPrevNextGw(-1);
+      if(gw == null) return;
+      currentGW = gw;
+      updateGwButtons();
+      await recalcAllForGW();
+      showToast(`Now showing GW ${currentGW}`);
+    });
+  }
+
+  if(nextBtn){
+    nextBtn.addEventListener("click", async () => {
+      const gw = getPrevNextGw(+1);
+      if(gw == null) return;
+      currentGW = gw;
+      updateGwButtons();
+      await recalcAllForGW();
+      showToast(`Now showing GW ${currentGW}`);
+    });
+  }
+
+
+  for(let i=0;i<15;i++){
+    setHidden(i, initialSlots[i]?.player_id || "");
+  }
+
+  const enhanceBtn = document.getElementById("enhanceBtn");
+  if(enhanceBtn){
+    enhanceBtn.addEventListener("click", enhanceTeam);
+  }
+
+  playerSearch.disabled = false;
+  finderFilter = "";
+  finderQuery  = "";
+  setActiveChip("");
+
+  renderPitch();
+  await loadGameweeks?.(); // if your init isn't async, see note below
+  setGwPill();
+  updateGwButtons();
+  recalcAllForGW();
+
+  updateXiTotalPill();
+  loadSuggestions();
+})();
+
+async function importTeamById(teamId){
+  if(!teamId){
+    showToast("Enter your Team ID.");
+    return;
+  }
+
+  try{
+    const res = await fetch(`/api/import_team?team_id=${encodeURIComponent(teamId)}`);
+    const data = await res.json().catch(()=>null);
+
+    if(!res.ok){
+      showToast(data?.error || "Import failed");
+      return;
+    }
+
+    if(!data?.slots || data.slots.length !== 15){
+      showToast("Import returned invalid squad.");
+      return;
+    }
+
+    // apply imported slots + hidden inputs
+    for(let i=0;i<15;i++){
+      initialSlots[i] = data.slots[i];
+      setHidden(i, data.slots[i]?.player_id || "");
+    }
+
+    // After import: show the upcoming GW by default (not the GW returned by import)
+    if(Number.isFinite(upcomingGW)){
+      currentGW = upcomingGW;
+      setGwPill();
+      updateGwButtons();
+    }
+
+    // ✅ THIS is the budget/value/team-name truth source
+    importedTeamMeta = {
+        team_id: Number(teamId),
+        team_name: data.team_name ?? null,
+        gw: currentGW,
+        bank: (data.bank != null) ? Number(data.bank) : null,
+        squad_value: (data.squad_value != null) ? Number(data.squad_value) : null,
+        total_value: (data.total_value != null) ? Number(data.total_value) : null   // ✅ add this
+    };
+
+    renderTeamOverlay();
+    const btn = document.getElementById("tpUpdateBtnField");
+    if(btn) btn.hidden = false;
+
+    // ✅ clear old cached xPts so we don't accidentally use stale GW data
+    try{ xptsCache.clear(); }catch(e){}
+
+    // ✅ IMPORTANT: refresh opp/xPts for the CURRENT GW immediately after import
+    await recalcAllForGW();
+
+    // ✅ Auto-pick captain/vice based on CURRENT GW xPts
+    autoSetCapViceFromXI();
+
+    // ✅ Update total pill with captain doubling applied
+    updateXiTotalPill();
+
+
+    await runPlannerBest123();
+    setPlannerLoading(false);
+    renderPlannerMeta();
+
+    // reset selection + roles
+    selectedSlotIndex = null;
+
+    // ✅ auto-pick captain/vice based on current GW xPts after import
+    autoSetCapViceFromXI();
+
+
+    renderPitch();
+    renderTeamOverlay();
+    updateXiTotalPill();
+    loadSuggestions();
+    recommendCapVice();
+
+    showToast(`Imported GW ${currentGW ?? ""}`.trim());
+  }catch(e){
+    showToast("Import failed");
+  }
+}
+
+
+
+
+const importBtn = document.getElementById("importBtn");
+if(importBtn){
+  importBtn.addEventListener("click", () => {
+    const teamId = (document.getElementById("teamIdInput")?.value || "").trim();
+    importTeamById(teamId);
+  });
+}
+
+// Update team → re-run planner
+const tpUpdateBtnField = document.getElementById("tpUpdateBtnField");
+if(tpUpdateBtnField){
+  tpUpdateBtnField.addEventListener("click", async () => {
+    if(plannerRunning) return;
+
+    if(!importedTeamMeta?.team_id){
+        showToast("Import your team first.");
+        return;
+    }
+
+    showToast("Recalculating transfers…");
+    await runPlannerBest123();
+    autoSetCapViceFromXI();
+  });
+}
+
+
+
+/* ===========================
+   TRANSFER PLANNER v1
+   =========================== */
+
+const tpOutSelect = () => document.getElementById("tpOutSelect");
+const tpInSearch  = () => document.getElementById("tpInSearch");
+const tpSuggestBtn= () => document.getElementById("tpSuggestBtn");
+const tpList      = () => document.getElementById("tpList");
+const tpGwLabel   = () => document.getElementById("tpGwLabel");
+
+const xptsCache = new Map(); // key: `${pid}|${gw}` -> {xpts, opp}
+
+async function getXpts(pid, gw){
+  const key = `${pid}|${gw}`;
+  if(xptsCache.has(key)) return xptsCache.get(key);
+
+  try{
+    const res = await fetchWithTimeout(
+      `/api/player_xpts?player_id=${encodeURIComponent(pid)}&gw=${encodeURIComponent(gw)}`,
+      12000
+    );
+    if(!res.ok) return null;
+
+    const data = await res.json();
+    const out = { xpts: (data.xpts ?? null), opp: (data.opp ?? "—") };
+    xptsCache.set(key, out);
+    return out;
+  }catch(e){
+    // abort / timeout / network error
+    return null;
+  }
+}
+
+
+function squadPlayerLabel(s, idx){
+  const pos = (s?.pos || "—").toUpperCase();
+  const price = (s?.price != null) ? `£${Number(s.price).toFixed(1)}m` : "—";
+  const where = (idx <= 10) ? "XI" : "Bench";
+  return `${s?.name ?? "—"} (${pos}, ${price}, ${where})`;
+}
+
+function initPlannerUI(){
+  const gwEl = document.getElementById("tpGwLabel");
+  if(gwEl) gwEl.textContent = (plannerStartGW() != null) ? String(plannerStartGW()) : "—";
+}
+
+
+async function suggestBestTransfers(){
+  const sel = tpOutSelect();
+  const listEl = tpList();
+  const searchEl = tpInSearch();
+
+  if(!sel || !listEl) return;
+
+  const outIdx = Number(sel.value);
+
+  if(EXCLUDED_OUT_INDEXES.has(outIdx)){
+    listEl.innerHTML = `<div class="tp-empty">Bench goalkeepers are excluded from transfer suggestions.</div>`;
+    return;
+  }
+
+  if(!Number.isFinite(outIdx)){
+    listEl.innerHTML = `<div class="tp-empty">Choose a player to transfer out.</div>`;
+    return;
+  }
+
+  const outSlot = initialSlots[outIdx];
+  if(!outSlot?.player_id){
+    listEl.innerHTML = `<div class="tp-empty">Invalid OUT selection.</div>`;
+    return;
+  }
+
+  if(currentGW == null){
+    listEl.innerHTML = `<div class="tp-empty">Gameweek not loaded yet.</div>`;
+    return;
+  }
+
+  const outPos = (outSlot.pos || "").toUpperCase();
+  const outPid = outSlot.player_id;
+  const outPrice = Number(outSlot.price || 0);
+  const bank = Number(importedTeamMeta?.bank || 0);
+
+  const q = (searchEl?.value || "").trim();
+
+  listEl.innerHTML = `<div class="tp-empty">Loading suggestions…</div>`;
+
+  // Pull candidates from your existing players API, filtered by position + optional search
+  const candidates = await fetchPlayers(outPos, q);
+
+  // Limit for v1 to avoid too many xPts calls
+  const topPool = (candidates || []).slice(0, 25);
+
+  // Fetch OUT xPts
+  const outX = await getXpts(outPid, currentGW);
+  const outXpts = (outX && outX.xpts != null) ? Number(outX.xpts) : NaN;
+
+  // Current team counts
+  const countsBefore = teamCounts(initialSlots);
+
+  const rows = [];
+  for(const p of topPool){
+    if(!p?.id) continue;
+
+    // skip if same as out
+    if(String(p.id) === String(outPid)) continue;
+
+    // skip if already picked elsewhere
+    if(isPlayerAlreadyPicked(p.id, outIdx)) continue;
+
+    // budget check (sell out + bank)
+    const inPrice = Number(p.price || 0);
+    const budget = bank + outPrice;
+    if(inPrice > budget) continue;
+
+    // max 3 per team check (simulate swap)
+    const outTeam = String(outSlot.team_id || "");
+    const inTeam  = String(p.team_id || "");
+    const after = { ...countsBefore };
+    if(outTeam) after[outTeam] = Math.max(0, (after[outTeam] || 0) - 1);
+    if(inTeam)  after[inTeam] = (after[inTeam] || 0) + 1;
+    if(inTeam && after[inTeam] > 3) continue;
+
+    // get IN xPts
+    const inX = await getXpts(p.id, currentGW);
+    const inXpts = (inX && inX.xpts != null) ? Number(inX.xpts) : NaN;
+
+    if(!Number.isFinite(inXpts)) continue;
+
+    const gain = Number.isFinite(outXpts) ? (inXpts - outXpts) : inXpts;
+
+    rows.push({
+      nameIn: p.name,
+      teamIn: p.team,
+      inPrice,
+      inOpp: inX?.opp ?? "—",
+      inXpts,
+      gain
+    });
+  }
+
+  rows.sort((a,b)=> b.gain - a.gain);
+
+  if(rows.length === 0){
+    listEl.innerHTML = `<div class="tp-empty">No valid suggestions found (try clearing search, or check budget/team limits).</div>`;
+    return;
+  }
+
+  // Render top 10
+  const top = rows.slice(0, 10);
+  listEl.innerHTML = "";
+
+  top.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "tp-row";
+    row.innerHTML = `
+      <div>
+        <div class="tp-strong">IN: ${r.nameIn}</div>
+        <div class="tp-small">${r.teamIn} • ${r.inOpp}</div>
+      </div>
+
+      <div>
+        <div class="tp-strong">OUT: ${outSlot.name}</div>
+        <div class="tp-small">${outSlot.team} • ${outSlot.opp ?? "—"}</div>
+      </div>
+
+      <div class="tp-pill">£${r.inPrice.toFixed(1)}m</div>
+      <div class="tp-pill">+${r.gain.toFixed(2)} xPts</div>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
+
+</script>
+</div>
+
+{% endblock %}

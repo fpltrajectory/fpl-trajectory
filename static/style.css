@@ -1,0 +1,298 @@
+/* ===========================
+   GLOBAL DEFAULTS
+   =========================== */
+
+/* Default site theme is dark (matches your base background) */
+body{
+  color: #fff;
+}
+
+/* If you ever set global link colors elsewhere, keep this */
+a{ color: inherit; }
+
+
+/* ===========================
+   HOME ONLY
+   =========================== */
+
+.home-page{
+  background:
+    radial-gradient(circle at 50% -20%, rgba(0,255,135,0.18), rgba(0,0,0,0) 45%),
+    radial-gradient(circle at 85% 20%, rgba(0,255,135,0.10), rgba(0,0,0,0) 40%),
+    linear-gradient(180deg, #0b0f0c 0%, #060807 40%, #040505 100%);
+  color: #fff;
+}
+
+.home-page .home-intro,
+.home-page .home-intro *{
+  color: #fff;
+}
+
+/* HOME INTRO: move to the left on desktop */
+.home-page .home-intro{
+  text-align: left;
+  max-width: 720px;
+
+  /* left aligned instead of centered */
+  margin: 90px 0 50px 80px;
+
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(0,255,135,0.22);
+  border-radius: 20px;
+  padding: 44px;
+
+  box-shadow: 0 22px 55px rgba(0,0,0,0.40);
+  backdrop-filter: blur(8px);
+}
+
+/* Button should align left too */
+.home-page .home-intro .submit-btn{
+  display: inline-block;
+  margin-top: 14px;
+}
+
+/* Responsive: center it on smaller screens */
+@media (max-width: 900px){
+  .home-page .home-intro{
+    margin: 50px auto 40px auto;
+    text-align: center;
+  }
+}
+
+.home-page .captain-section,
+.home-page .captain-section *{
+  color: #fff;
+}
+
+
+/* ===========================
+   LINEUP PAGE FIXES
+   (so text is NOT black on dark background)
+   =========================== */
+
+/* Anything OUTSIDE white cards on lineup should be white */
+.lineup-page{
+  color: #fff;
+}
+.lineup-page .page-title,
+.lineup-page .page-subtitle{
+  color: #fff;
+}
+
+/* The lineup UI uses lots of white cards → keep text dark inside them */
+.lineup-page .finder-card,
+.lineup-page .finder-card * ,
+.lineup-page .pitch-hud,
+.lineup-page .pitch-hud * ,
+.lineup-page .card,
+.lineup-page .card * ,
+.lineup-page .table-head,
+.lineup-page .table-head * ,
+.lineup-page .table-row,
+.lineup-page .table-row *{
+  color: #111;
+}
+
+/* Optional: make sure placeholder text is readable in inputs */
+.lineup-page input::placeholder{
+  color: rgba(0,0,0,0.45);
+}
+
+
+/* ===========================
+   LEGACY PITCH STYLES (scoped)
+   =========================== */
+
+.legacy-pitch .pitch {
+  background: linear-gradient(#2e8b57, #3cb371);
+  padding: 40px 20px;
+  border-radius: 20px;
+  max-width: 900px;
+  margin: 30px auto;
+}
+
+.legacy-pitch .row {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.legacy-pitch .player-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  width: 110px;
+  height: 40px;
+  margin: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.legacy-pitch .player-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.legacy-pitch .player-xpts {
+  font-size: 14px;
+  margin-top: 4px;
+  color: #fff;
+  font-weight: bold;
+}
+/* ===========================
+   TRANSFER PLANNER (v1)
+   =========================== */
+.planner-wrap{
+  margin-top: 16px;
+  max-width: 1150px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.planner-title{
+  margin: 10px 0 10px;
+  font-size: 18px;
+  font-weight: 1000;
+  color: #fff;
+}
+
+.capvice-wrap{
+  margin-bottom: 12px;
+}
+
+.planner-card{
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 18px;
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.planner-meta{
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  font-weight: 900;
+}
+
+.meta-empty{
+  opacity: .8;
+}
+
+.planner-body{
+  padding: 12px 14px 14px;
+}
+
+.tp-controls{
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 900px){
+  .tp-controls{ grid-template-columns: 1fr; }
+}
+
+.tp-label{
+  display: block;
+  font-size: 11px;
+  font-weight: 1000;
+  opacity: .85;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+.tp-select, .tp-input{
+  width: 100%;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.25);
+  color: #fff;
+  padding: 0 10px;
+  font-weight: 900;
+  outline: none;
+}
+
+.tp-input::placeholder{ opacity: .7; }
+
+.tp-btn{
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(40,167,69,0.95);
+  color: #fff;
+  font-weight: 1000;
+  padding: 0 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tp-btn:hover{ filter: brightness(1.05); }
+
+.tp-results{
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.tp-results-head{
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  font-weight: 1000;
+}
+
+.tp-sub{
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: .8;
+  font-weight: 900;
+}
+
+.tp-list{
+  padding: 10px 12px;
+}
+
+.tp-empty{
+  color: rgba(255,255,255,0.85);
+  font-weight: 900;
+  font-size: 12px;
+  opacity: .85;
+}
+
+.tp-row{
+  display: grid;
+  grid-template-columns: 1.3fr 1.3fr 0.7fr 0.7fr;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+@media (max-width: 900px){
+  .tp-row{ grid-template-columns: 1fr; }
+}
+
+.tp-strong{ font-weight: 1000; color:#fff; }
+.tp-small{ font-size: 11px; font-weight: 900; opacity: .85; color:#fff; }
+.tp-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.25);
+  font-weight: 1000;
+  color:#fff;
+  white-space: nowrap;
+}

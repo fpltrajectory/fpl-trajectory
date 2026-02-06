@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>FPL Trajectory</title>
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_css %}{% endblock %}
+
+    {% block head_extra %}{% endblock %}
+
+        <style>
+        /* ===========================
+           NAVIGATION BAR
+        ============================ */
+        nav {
+            background: linear-gradient(90deg, #111111 0%, #222222 100%);
+            padding: 6px 20px;
+            display: flex;
+            align-items: center;
+            gap: 50px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: #28a745;
+        }
+
+        nav .logo {
+            height: 60px;
+            width: auto;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        nav .logo-link:hover .logo {
+            transform: scale(1.1);
+        }
+
+        /* ===========================
+           BODY DEFAULTS
+        ============================ */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+
+            /* dark theme background */
+            background:
+                radial-gradient(circle at 50% -20%, rgba(0,255,135,0.18), rgba(0,0,0,0) 45%),
+                radial-gradient(circle at 85% 20%, rgba(0,255,135,0.10), rgba(0,0,0,0) 40%),
+                linear-gradient(180deg, #0b0f0c 0%, #060807 40%, #040505 100%);
+
+            color: #ffffff;
+        }
+
+
+        /* ===========================
+           PAGE CONTENT
+        ============================ */
+        .page-content {
+            padding: 40px;
+            background: transparent;
+        }
+    </style>
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+
+<nav>
+    <a href="/" class="logo-link">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="FPL Trajectory Logo" class="logo">
+    </a>
+
+    <a href="/">Home</a>
+    <a href="/predictor">Predictor</a>
+    <a href="/lineup">Lineup</a>
+    <a href="/teams">Teams</a>
+    <a href="/stats">Stats</a>
+</nav>
+
+<div class="page-content">
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

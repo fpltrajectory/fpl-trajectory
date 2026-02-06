@@ -1,0 +1,932 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- ✅ Loading overlay (hidden by default) -->
+<div id="predictorLoading" class="pred-loading" hidden aria-live="polite" aria-busy="true">
+  <div class="pred-loading-card">
+    <div class="pred-spinner" aria-hidden="true"></div>
+    <div class="pred-loading-text">
+      <div class="pred-loading-title">Calculating…</div>
+      <div class="pred-loading-sub">Applying filters & building predictions</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Page two-column layout: left = predictor, right = ad placeholder -->
+<div class="predictor-layout">
+
+    <!-- LEFT: your predictor UI (not full width) -->
+    <div class="predictor-main">
+        <div class="search-panel">
+            <div class="panel-title">FILTERS</div>
+
+            <form method="POST" class="filters-search-form">
+                <input type="hidden" name="action" value="filter">
+
+                <!-- LEFT: Sliders (on the RIGHT side inside the panel) -->
+                <div class="left-sliders">
+
+                    <!-- Price Range -->
+                    <div class="form-group range-group">
+                        <div class="range-header">
+                            <div class="range-title">Price Range (M)</div>
+                        </div>
+
+                        <div class="range-row">
+                            <div class="dual-range" id="price-slider">
+                                <div class="slider-track"></div>
+
+                                <input type="range" min="3.5" max="16" value="3.5" id="min_price" name="min_price" step="0.1">
+                                <input type="range" min="3.5" max="16" value="16" id="max_price" name="max_price" step="0.1">
+
+                                <div class="thumb-bubble" id="priceBubbleMin">3.5</div>
+                                <div class="thumb-bubble" id="priceBubbleMax">16.0</div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <!-- RIGHT: Controls (on the LEFT side inside the panel) -->
+                <div class="right-controls">
+
+                    <!-- Position -->
+                    <div class="form-group">
+                        <label>Position</label>
+
+                        <input type="hidden" name="position" id="position" value="">
+
+                        <div class="pos-buttons" id="posButtons">
+                            <button type="button" class="pos-btn active" data-value="">ALL</button>
+                            <button type="button" class="pos-btn" data-value="GK">GK</button>
+                            <button type="button" class="pos-btn" data-value="DEF">DEF</button>
+                            <button type="button" class="pos-btn" data-value="MID">MID</button>
+                            <button type="button" class="pos-btn" data-value="FWD">ATT</button>
+                        </div>
+                    </div>
+
+                    <!-- Club -->
+                    <div class="form-group">
+                        <label for="club">Club</label>
+                        <input type="text" name="club" id="club" placeholder="e.g. Liverpool">
+                    </div>
+
+                    <!-- Player -->
+                    <div class="form-group">
+                        <label for="player_name">Player</label>
+                        <input type="text" name="player_name" id="player_name" placeholder="e.g. Salah">
+                    </div>
+
+                    <!-- Button -->
+                    <div class="form-group submit-group">
+                        <button type="submit">Apply Filters</button>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+        {% if search_result %}
+            {% if search_result.error %}
+                <div class="result error">{{ search_result.error }}</div>
+            {% else %}
+                <div class="results-grid">
+                    {% for f in search_result.fixtures %}
+                    <div class="result-card">
+                        <div class="player-avatar">
+                            <img src="{{ f.photo_url }}" alt="{{ f.player }}" title="{{ f.player }}">
+                        </div>
+                        <div class="team-badge" style="background: {{ f.team_color }};">
+                            {{ f.team_abbr }}
+                        </div>
+                        <div class="player-info">
+                            <h2>{{ f.player }}</h2>
+                            <p>{{ f.position }}{% if f.gameweek %} | GW {{ f.gameweek }}{% endif %}</p>
+                            <p>Total Expected Points: <strong>{{ f.total_xpts }}</strong></p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+
+        {% if filters_result %}
+            <h2 class="section-title">Filtered Players</h2>
+
+            <div class="player-list">
+              {% for f in filters_result %}
+                <div class="player-row">
+
+                    <!-- LEFT -->
+                  <div class="pr-left">
+                    <img class="pr-avatar" src="{{ f.photo_url }}" alt="{{ f.player }}">
+                    <div class="pr-meta">
+                      <div class="pr-name">{{ f.player }}</div>
+
+                      <div class="pr-sub pr-sub-stats">
+                        <span class="pr-pill">£{{ "%.1f"|format(f.price) }}m</span>
+                        <span class="pr-pill">{{ "%.1f"|format(f.ownership) }}%</span>
+                        <span class="pr-pill" style="background:#eaf6ff;border-color:rgba(40,167,69,0.25);">
+                          Total: {{ "%.1f"|format(f.total_xpts) }} xPts
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                    <!-- RIGHT: 5 upcoming gameweeks -->
+                    <div class="pr-mid gw-boxes">
+                      {% for g in f.gw_points %}
+                        <div class="gw-box {% if loop.index0 == 0 %}gw-next{% endif %}">
+                          <div class="gw-label">GW {{ g.gw }}</div>
+                          <div class="gw-xpts">
+                            {% if g.xpts is not none %}{{ g.xpts }}{% else %}—{% endif %}
+                          </div>
+                          <div class="gw-opp">
+                            {% if g.opp %}{{ g.opp }}{% else %}xPts{% endif %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+    </div>
+
+</div>
+
+<style>
+
+/* ===========================
+   LOADING OVERLAY (Predictor)
+=========================== */
+.pred-loading{
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pred-loading[hidden]{ display:none !important; }
+
+.pred-loading-card{
+  display:flex;
+  align-items:center;
+  gap: 14px;
+
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+  min-width: 280px;
+}
+
+.pred-spinner{
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 3px solid rgba(0,0,0,0.18);
+  border-top-color: rgba(40,167,69,0.95);
+  animation: predSpin .9s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes predSpin{
+  to{ transform: rotate(360deg); }
+}
+
+.pred-loading-title{
+  font-weight: 1000;
+  color: rgba(0,0,0,0.85);
+  font-size: 14px;
+}
+
+.pred-loading-sub{
+  margin-top: 2px;
+  font-weight: 850;
+  color: rgba(0,0,0,0.60);
+  font-size: 12px;
+}
+
+/* ===========================
+   PAGE LAYOUT (left + ad box)
+=========================== */
+.predictor-layout{
+    width: 100%;
+    display: block;   /* single column */
+}
+
+.predictor-main{
+    width: min(1100px, 100%);
+    margin: 0 auto;              /* center */
+    padding: 20px 18px;
+    font-family: Arial, sans-serif;
+}
+
+/* ===========================
+   YOUR EXISTING STYLES
+=========================== */
+
+.section-title {
+    margin-top: 22px;
+    margin-bottom: 14px;
+    font-size: 22px;
+    color: #111;
+}
+
+/* Panel */
+.search-panel {
+    position: relative;
+    background: #ffffff;
+    padding: 38px 22px 22px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.06);
+    margin-bottom: 26px;
+}
+
+.panel-title{
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-weight: 900;
+    font-size: 13px;
+    color: rgba(0,0,0,0.55);
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+/* 2-column form layout (controls LEFT, sliders RIGHT) */
+.filters-search-form{
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+    align-items: start;
+    grid-template-areas: "controls sliders";
+}
+
+/* Assign areas */
+.right-controls{ grid-area: controls; }
+.left-sliders{ grid-area: sliders; }
+
+/* Responsive: stack on small screens */
+@media (max-width: 980px) {
+    .filters-search-form{
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "controls"
+            "sliders";
+        gap: 14px;
+    }
+}
+
+/* Left + Right columns */
+.left-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.right-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* General inputs */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group > label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #222;
+}
+
+.form-group input[type="text"],
+.form-group select {
+    padding: 11px 12px;
+    font-size: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.18);
+    outline: none;
+    transition: 0.18s;
+    background: #fff;
+}
+
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 4px rgba(40,167,69,0.15);
+}
+
+/* Buttons */
+.submit-group {
+    display: flex;
+    gap: 10px;
+}
+
+.submit-group button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 900;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.submit-group button:hover {
+    background-color: #1f7f33;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(40,167,69,0.22);
+}
+
+/* Range blocks */
+.range-group { gap: 10px; }
+
+.range-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #222;
+}
+
+/* Give sliders a bit of side padding so bubbles don't hit edges */
+.range-row {
+    padding: 0 20px;
+}
+
+/* Slider */
+.dual-range {
+    position: relative;
+    height: 54px;
+}
+
+.slider-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 18px;
+    height: 4px;
+    border-radius: 999px;
+    background: #e6e6e6;
+    transition: background 0.2s ease;
+}
+
+.dual-range input[type="range"] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 10px;
+    width: 100%;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.dual-range input[type="range"]::-webkit-slider-thumb {
+    pointer-events: all;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #2da44e;
+    border: none;
+    box-shadow:
+        0 0 0 4px #ffffff,
+        0 6px 14px rgba(0,0,0,0.18);
+    cursor: pointer;
+    position: relative;
+    z-index: 5;
+}
+
+.dual-range input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #2da44e;
+    border: none;
+    box-shadow:
+        0 0 0 4px #ffffff,
+        0 6px 14px rgba(0,0,0,0.18);
+    cursor: pointer;
+}
+
+.dual-range input[type="range"]::-moz-range-track {
+    background: transparent;
+}
+
+/* Bubble under thumbs */
+.thumb-bubble {
+    position: absolute;
+    top: 38px;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 4px 9px;
+    border-radius: 999px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 50;
+}
+
+/* Position buttons */
+.pos-buttons {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.pos-btn {
+    border: 1px solid rgba(0,0,0,0.18);
+    background: #fff;
+    color: #111;
+    padding: 11px 10px;
+    border-radius: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.pos-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.pos-btn.active {
+    background: #28a745;
+    color: #fff;
+    border-color: #28a745;
+    box-shadow: 0 10px 22px rgba(40,167,69,0.22);
+}
+
+/* Results (your old grid/cards are untouched) */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+}
+
+.result-card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 35px rgba(0,0,0,0.14);
+}
+
+.player-avatar img {
+    width: 74px;
+    height: 96px;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 10px;
+}
+
+.team-badge {
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: white;
+    font-weight: 900;
+    margin-bottom: 10px;
+    font-size: 12px;
+    letter-spacing: 0.6px;
+}
+
+.player-info h2 {
+    margin: 4px 0;
+    font-size: 20px;
+    color: #111;
+}
+
+.player-info p {
+    margin: 4px 0;
+    color: #444;
+}
+
+.player-info p strong {
+    background: #28a745;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 16px;
+    display: inline-block;
+}
+
+.result.error {
+    text-align:center;
+    color:#b00020;
+    font-weight:900;
+    margin-top:20px;
+}
+
+/* ===========================
+   NEW OUTPUT STYLES (ONLY filters_result)
+=========================== */
+.player-list{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.player-row{
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    border-radius: 18px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 18px;
+    align-items: center;
+}
+
+
+
+.pr-left{
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    min-width: 0;
+}
+
+.pr-avatar{
+    width: 100px;
+    height: 120px;
+    object-fit: contain;
+    background: #f2f2f2;
+}
+
+
+
+.pr-meta{ min-width: 0; }
+
+.pr-name{
+    font-size: 22px;
+    font-weight: 900;
+    color: #111;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pr-sub{
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(0,0,0,0.60);
+    font-weight: 800;
+}
+.pr-sub-stats{
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pr-pill{
+    background: #f3f3f3;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 900;
+    font-size: 12px;
+    color: rgba(0,0,0,0.75);
+    white-space: nowrap;
+}
+
+
+.pr-team{
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    padding: 4px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.6px;
+}
+
+.pr-dot{ opacity: 0.55; }
+
+/* GW boxes in the middle */
+.pr-mid.gw-boxes{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+/* Individual GW box */
+.gw-box{
+    background: #f7f7f7;
+    border-radius: 14px;
+    padding: 12px 10px;
+    text-align: center;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Highlight NEXT gameweek */
+.gw-box.gw-next{
+    background: #eaf6ff;
+    border: 2px solid #28a745;
+    transform: scale(1.08);
+}
+.gw-label{
+    font-size: 12px;
+    font-weight: 900;
+    color: #111;      /* ✅ force black */
+    opacity: 1;       /* ✅ no fading */
+}
+.gw-opp{
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #111;      /* ✅ force black */
+    opacity: 1;       /* ✅ no fading */
+}
+/* xPts number */
+.gw-xpts{
+    margin-top: 6px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #111;
+}
+
+.stat{
+    border-radius: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+
+.stat-primary{
+    background: #eaf6ff;
+}
+
+.stat-muted{
+    background: #f7f7f7;
+    color: rgba(0,0,0,0.55);
+}
+
+.stat-label{
+    font-size: 12px;
+    font-weight: 900;
+    opacity: 0.75;
+}
+
+.stat-value{
+    margin-top: 4px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #111;
+}
+
+/* right GW chips */
+.pr-right{ overflow: hidden; }
+
+.gw-strip{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.gw-chip{
+    min-width: 92px;
+    background: #dff0ea;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 14px;
+    padding: 10px 10px;
+    text-align: center;
+    flex: 0 0 auto;
+}
+
+.gw-chip.ghost{
+    background: #f2f2f2;
+    color: rgba(0,0,0,0.55);
+}
+
+.gw-top{
+    font-size: 12px;
+    font-weight: 900;
+    opacity: 0.70;
+}
+
+.gw-main{
+    margin-top: 4px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #111;
+}
+
+.gw-sub{
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 900;
+    opacity: 0.65;
+}
+
+/* responsive */
+@media (max-width: 1200px){
+    .player-row{
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .pr-mid{
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .gw-strip{
+        justify-content: flex-start;
+    }
+}
+/* ===========================
+   ALIGNMENT FIX (Filtered Players rows)
+=========================== */
+
+/* Keep the list itself centered and consistent width */
+.player-list{
+  width: 100%;
+  max-width: 1100px;     /* adjust if you want wider/narrower */
+  margin: 0 auto;
+}
+
+/* Make each row: left column fixed, GW boxes column fixed + right-aligned */
+.player-row{
+  grid-template-columns: 460px 1fr; /* left area fixed */
+  align-items: center;
+}
+
+/* Left area should not shrink weirdly */
+.pr-left{
+  min-width: 0;
+}
+
+/* Keep avatar from shrinking + avoid layout jumps */
+.pr-avatar{
+  flex: 0 0 100px;
+  border-radius: 12px;
+  display: block;
+}
+
+/* Force the GW boxes section to be a consistent width and stick to the right */
+.pr-mid.gw-boxes{
+  width: min(640px, 100%);   /* consistent GW strip width */
+  justify-self: end;         /* pushes GW strip to the right edge */
+  align-items: stretch;
+}
+
+/* Ensure each GW box fills evenly */
+.pr-mid.gw-boxes{
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* Prevent pills from wrapping into multiple lines and pushing layout */
+.pr-sub-stats{
+  flex-wrap: nowrap;          /* keeps the pill row tidy */
+  overflow: hidden;
+}
+
+.pr-pill{
+  flex: 0 0 auto;
+}
+</style>
+
+<script>
+function positionBubble(rangeInput, bubbleEl, sliderEl) {
+    const sliderWidth = sliderEl.clientWidth;
+
+    const min = parseFloat(rangeInput.min);
+    const max = parseFloat(rangeInput.max);
+    const val = parseFloat(rangeInput.value);
+
+    const percent = (val - min) / (max - min);
+
+    const thumbSize = 22; // must match CSS thumb size
+    const x = (percent * (sliderWidth - thumbSize)) + (thumbSize / 2);
+
+    bubbleEl.style.left = `${x}px`;
+
+    const step = rangeInput.step;
+    if (step && step !== "1") bubbleEl.textContent = val.toFixed(1);
+    else bubbleEl.textContent = String(Math.round(val));
+}
+
+function initDualRange(sliderId, minInputId, maxInputId, bubbleMinId, bubbleMaxId) {
+    const slider = document.getElementById(sliderId);
+    const track = slider.querySelector(".slider-track");
+
+    const minInput = document.getElementById(minInputId);
+    const maxInput = document.getElementById(maxInputId);
+
+    const bubbleMin = document.getElementById(bubbleMinId);
+    const bubbleMax = document.getElementById(bubbleMaxId);
+
+    function update() {
+        if (parseFloat(minInput.value) > parseFloat(maxInput.value)) minInput.value = maxInput.value;
+        if (parseFloat(maxInput.value) < parseFloat(minInput.value)) maxInput.value = minInput.value;
+
+        const min = parseFloat(minInput.min);
+        const max = parseFloat(minInput.max);
+
+        const minVal = parseFloat(minInput.value);
+        const maxVal = parseFloat(maxInput.value);
+
+        const minPercent = ((minVal - min) / (max - min)) * 100;
+        const maxPercent = ((maxVal - min) / (max - min)) * 100;
+
+        track.style.background =
+            `linear-gradient(to right, #e6e6e6 ${minPercent}%, #2da44e ${minPercent}%, #2da44e ${maxPercent}%, #e6e6e6 ${maxPercent}%)`;
+
+        positionBubble(minInput, bubbleMin, slider);
+        positionBubble(maxInput, bubbleMax, slider);
+    }
+
+    minInput.addEventListener("input", update);
+    maxInput.addEventListener("input", update);
+    window.addEventListener("resize", update);
+
+    update();
+}
+
+// Position button group -> updates hidden #position input
+(() => {
+    const hidden = document.getElementById("position");
+    const wrap = document.getElementById("posButtons");
+    if (!hidden || !wrap) return;
+
+    const buttons = Array.from(wrap.querySelectorAll(".pos-btn"));
+
+    function setActive(value) {
+        hidden.value = value;
+        buttons.forEach(b => b.classList.toggle("active", b.dataset.value === value));
+    }
+
+    buttons.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.value)));
+    setActive(hidden.value || "");
+})();
+
+initDualRange("price-slider", "min_price", "max_price", "priceBubbleMin", "priceBubbleMax");
+
+// ✅ Show loading overlay ONLY when the filters form is actually submitting
+(() => {
+  const form = document.querySelector(".filters-search-form");
+  const loading = document.getElementById("predictorLoading");
+  if(!form || !loading) return;
+
+  form.addEventListener("submit", () => {
+    // Show instantly when user triggers a real request
+    loading.hidden = false;
+
+    // Optional: prevent double submits
+    const btn = form.querySelector('button[type="submit"]');
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+    }
+  });
+
+  // If user navigates back and page is restored from bfcache, hide loader
+  window.addEventListener("pageshow", () => {
+    loading.hidden = true;
+    const btn = form.querySelector('button[type="submit"]');
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = "Apply Filters";
+    }
+  });
+})();
+
+</script>
+
+{% endblock %}

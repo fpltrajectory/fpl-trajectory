@@ -29,78 +29,105 @@ TEAM_COLORS = {
 }
 
 # --------------------------
-# LOAD TEAM xG / xGA CSV
+# LAZY LOADED GLOBALS
 # --------------------------
-att_df = pd.read_csv("FPLXGXGA1.csv", sep=",", quotechar='"')
-att_df.columns = [c.strip().lower() for c in att_df.columns]
+_loaded = False
 
-print("CSV columns:", att_df.columns.tolist())
-print(att_df.head(2))
+players = []
+teams = []
+fixtures = []
+data = {}
 
-def_df = att_df[["team", "matches", "goals", "ga", "xga"]].copy()
-att_df = att_df[["team", "matches", "goals", "xg"]].copy()
+team_xG_per_game = {}
+team_xGC_per_game = {}
+player_hist_df = None
 
-def_df.columns = ["NAME", "PLAYED", "GOALS", "GA", "XGA"]
-att_df.columns = ["NAME", "PLAYED", "GOALS", "XG"]
+_FIX_BY_GW_TEAM = {}      # fixture index built after fixtures load
+_FPL_TEAM_NAME_TO_ID = {} # team name -> id map built after teams load
 
-att_df["PLAYED"] = att_df["PLAYED"].astype(int)
-def_df["PLAYED"] = def_df["PLAYED"].astype(int)
+_fpl_session = requests.Session()
+
+def ensure_loaded():
+    global _loaded, players, teams, fixtures, data
+    global team_xG_per_game, team_xGC_per_game, player_hist_df
+    global _FIX_BY_GW_TEAM, _FPL_TEAM_NAME_TO_ID
+
+    if _loaded:
+        return
+
+    # 1) Load CSVs (local disk)
+    att_df = pd.read_csv("FPLXGXGA1.csv", sep=",", quotechar='"')
+    att_df.columns = [c.strip().lower() for c in att_df.columns]
+
+    def clean_numeric(series):
+        return (
+            series.astype(str)
+            .str.extract(r"([0-9]+(?:[.,][0-9]+)?)")[0]
+            .str.replace(",", ".", regex=False)
+            .astype(float)
+        )
+
+    def_df = att_df[["team", "matches", "goals", "ga", "xga"]].copy()
+    att_only = att_df[["team", "matches", "goals", "xg"]].copy()
+
+    def_df.columns = ["NAME", "PLAYED", "GOALS", "GA", "XGA"]
+    att_only.columns = ["NAME", "PLAYED", "GOALS", "XG"]
+
+    def_df["PLAYED"] = def_df["PLAYED"].astype(int)
+    att_only["PLAYED"] = att_only["PLAYED"].astype(int)
+
+    att_only["XG"] = clean_numeric(att_only["XG"])
+    def_df["XGA"] = clean_numeric(def_df["XGA"])
+
+    team_xG_per_game = {r["NAME"]: r["XG"] / r["PLAYED"] for _, r in att_only.iterrows()}
+    team_xGC_per_game = {r["NAME"]: r["XGA"] / r["PLAYED"] for _, r in def_df.iterrows()}
+
+    # 2) Load player historical CSV
+    player_hist_df = pd.read_csv("league-players20242025VS.csv", sep=";")
+    player_hist_df.columns = player_hist_df.columns.str.strip().str.lower()
+    player_hist_df["player_key"] = player_hist_df["player"].astype(str).str.lower().str.strip()
+
+    # 3) Load FPL API (network)
+    bootstrap_url = "https://fantasy.premierleague.com/api/bootstrap-static/"
+    data = _fpl_session.get(bootstrap_url, timeout=10).json()
+    players = data["elements"]
+    teams = data["teams"]
+
+    fixtures = _fpl_session.get("https://fantasy.premierleague.com/api/fixtures/", timeout=10).json()
+
+    # 4) Build lookup maps
+    _FPL_TEAM_NAME_TO_ID = {t["name"]: t["id"] for t in teams}
+
+    _FIX_BY_GW_TEAM = {}
+    for fx in fixtures:
+        gw = fx.get("event")
+        th = fx.get("team_h")
+        ta = fx.get("team_a")
+        if gw is None or th is None or ta is None:
+            continue
+        _FIX_BY_GW_TEAM.setdefault((gw, th), []).append(fx)
+        _FIX_BY_GW_TEAM.setdefault((gw, ta), []).append(fx)
+
+    _loaded = True
 
 
-def clean_numeric(series):
-    return (
-        series.astype(str)
-        .str.extract(r"([0-9]+(?:[.,][0-9]+)?)")[0]
-        .str.replace(",", ".", regex=False)
-        .astype(float)
-    )
 
-
-att_df["XG"] = clean_numeric(att_df["XG"])
-def_df["XGA"] = clean_numeric(def_df["XGA"])
-
-team_xG_per_game = {r["NAME"]: r["XG"] / r["PLAYED"] for _, r in att_df.iterrows()}
-team_xGC_per_game = {r["NAME"]: r["XGA"] / r["PLAYED"] for _, r in def_df.iterrows()}
-
-# --------------------------
-# PLAYER HISTORICAL DATA
-# --------------------------
-player_hist_df = pd.read_csv("league-players20242025VS.csv", sep=";")
-player_hist_df.columns = player_hist_df.columns.str.strip().str.lower()
-player_hist_df["player_key"] = player_hist_df["player"].astype(str).str.lower().str.strip()
-
-# --------------------------
-# FPL DATA
-# --------------------------
-url = "https://fantasy.premierleague.com/api/bootstrap-static/"
-data = requests.get(url).json()
-players = data["elements"]
-teams = data["teams"]
-fixtures = requests.get("https://fantasy.premierleague.com/api/fixtures/").json()
 
 # --------------------------
 # FAST LOOKUPS + CACHES
 # --------------------------
 from functools import lru_cache
 
-# Index fixtures by (gw, team_id) so get_player_fixtures becomes O(1)
-_FIX_BY_GW_TEAM = {}
-for fx in fixtures:
-    gw = fx.get("event")
-    th = fx.get("team_h")
-    ta = fx.get("team_a")
-    if gw is None or th is None or ta is None:
-        continue
-    _FIX_BY_GW_TEAM.setdefault((gw, th), []).append(fx)
-    _FIX_BY_GW_TEAM.setdefault((gw, ta), []).append(fx)
 
 def get_player_fixtures(player, gw):
+    ensure_loaded()
     team_id = player["team"]
     return _FIX_BY_GW_TEAM.get((gw, team_id), [])
 
 
 @lru_cache(maxsize=4096)
 def fixture_totals_with_bonus(event, team_h, team_a):
+    ensure_loaded()
     """
     Compute total_xPts_with_bonus for ALL players in this fixture once,
     then reuse it for every player lookup.
@@ -142,10 +169,14 @@ POSITION_MAP = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 
 def team_name(team_id):
+    ensure_loaded()
     return next(t["name"] for t in teams if t["id"] == team_id)
 
 
-fpl_team_name_to_id = {t["name"]: t["id"] for t in teams}
+def get_team_id_by_name(name):
+    ensure_loaded()
+    return _FPL_TEAM_NAME_TO_ID.get(name)
+
 
 FPL_POINTS = {
     "goal": {"GK": 6, "DEF": 6, "MID": 5, "FWD": 4},
@@ -177,6 +208,7 @@ XA_PRIOR_PER90 = {"GK": 0.00, "DEF": 0.05, "MID": 0.18, "FWD": 0.12}
 
 
 def reliability_weight(minutes, m0=MIN_RELIABILITY_M0):
+    ensure_loaded()
     """0..1 weight. Low minutes -> close to 0 (use priors), high minutes -> close to 1."""
     m = float(minutes or 0)
     if m <= 0:
@@ -200,6 +232,7 @@ MIN_PENALTY_POWER = 1.15
 
 
 def safe_float(x, default=None):
+    ensure_loaded()
     try:
         if x is None:
             return default
@@ -212,6 +245,7 @@ def safe_float(x, default=None):
 
 
 def hist_row_sample_ok(hist_row):
+    ensure_loaded()
     if hist_row is None:
         return False
     hmins = safe_float(hist_row.get("min"), 0.0) or 0.0
@@ -220,6 +254,7 @@ def hist_row_sample_ok(hist_row):
 
 
 def guarded_hist_per90(hist_row):
+    ensure_loaded()
     if not hist_row_sample_ok(hist_row):
         return None, None
 
@@ -261,6 +296,7 @@ DEFCON_W = 6.0
 
 
 def bps_per90(player):
+    ensure_loaded()
     mins = float(player.get("minutes") or 0.0)
     if mins <= 0:
         return 0.0
@@ -268,6 +304,7 @@ def bps_per90(player):
 
 
 def bonus_per90(player):
+    ensure_loaded()
     mins = float(player.get("minutes") or 0.0)
     if mins <= 0:
         return 0.0
@@ -275,6 +312,7 @@ def bonus_per90(player):
 
 
 def bonus_tendency_score(player, minute_factor):
+    ensure_loaded()
     """
     Returns an additive bps-like score adjustment.
     Uses season bps/bonus per90, shrunk strongly for low minutes.
@@ -303,6 +341,7 @@ def bonus_tendency_score(player, minute_factor):
 # BONUS HELPERS
 # --------------------------
 def softmax(xs, temp=8.0):
+    ensure_loaded()
     xs = [float(x) for x in xs]
     if not xs:
         return []
@@ -316,6 +355,7 @@ def softmax(xs, temp=8.0):
 # LOW-MINUTES PENALTY (PROPORTIONAL)
 # --------------------------
 def combined_confidence_multiplier(player):
+    ensure_loaded()
     """
     0.35..1.0 multiplier.
     Low season minutes + low starts -> closer to floor, so their goals/xG/etc are rewarded less.
@@ -333,6 +373,7 @@ def combined_confidence_multiplier(player):
 
 
 def expected_bps_score(player, fixture, xG, xA, cs_prob, minute_factor, dcon_prob_val):
+    ensure_loaded()
     """
     BPS-like proxy:
       - Uses xG/xA/cs/defcon just like you had
@@ -366,6 +407,7 @@ def expected_bps_score(player, fixture, xG, xA, cs_prob, minute_factor, dcon_pro
 
 
 def expected_bonus_points_for_fixture(fixture, breakdowns_by_player_id, temp=BONUS_SOFTMAX_TEMP):
+    ensure_loaded()
     team_h = fixture["team_h"]
     team_a = fixture["team_a"]
 
@@ -428,6 +470,7 @@ def expected_bonus_points_for_fixture(fixture, breakdowns_by_player_id, temp=BON
 
 
 def xpts_breakdown_with_bonus(player, fixture):
+    ensure_loaded()
     """
     Returns the same breakdown as xpts_breakdown, but adds:
       - xBonus (expected bonus points for that match)
@@ -473,6 +516,7 @@ def xpts_breakdown_with_bonus(player, fixture):
 # MINUTES PROJECTION
 # --------------------------
 def project_minutes_next_gw(player):
+    ensure_loaded()
     mins = float(player.get("minutes") or 0)
     starts = float(player.get("starts") or 0)
 
@@ -492,6 +536,7 @@ def project_minutes_next_gw(player):
 
 
 def expected_appearance_points(proj_mins):
+    ensure_loaded()
     m = float(proj_mins or 0)
     k = 0.25
     p60 = 1.0 / (1.0 + math.exp(-k * (m - 60.0)))
@@ -502,6 +547,7 @@ def expected_appearance_points(proj_mins):
 # DEBUG HELPERS (FOR BUENDIA ISSUE)
 # --------------------------
 def debug_player_raw(name_contains="buend"):
+    ensure_loaded()
     for p in players:
         if name_contains.lower() in p.get("web_name", "").lower():
             print("\nRAW PLAYER FROM FPL API")
@@ -522,6 +568,7 @@ def debug_player_raw(name_contains="buend"):
 
 
 def debug_team_factors_for_fixture(player, fixture):
+    ensure_loaded()
     team_id = player["team"]
     opp_id = fixture["team_a"] if fixture["team_h"] == team_id else fixture["team_h"]
 
@@ -542,6 +589,7 @@ def debug_team_factors_for_fixture(player, fixture):
 # CLEAN SHEET / DEFCON / XPTS
 # --------------------------
 def clean_sheet_prob(player, fixture):
+    ensure_loaded()
     pos = POSITION_MAP[player["element_type"]]
     if pos not in ["GK", "DEF", "MID"]:
         return 0.0
@@ -567,6 +615,7 @@ def clean_sheet_prob(player, fixture):
 
 
 def def_contrib_per90(player):
+    ensure_loaded()
     mins = float(player.get("minutes") or 0)
     if mins <= 0:
         return 0.0
@@ -574,6 +623,7 @@ def def_contrib_per90(player):
 
 
 def defcon_prob(player):
+    ensure_loaded()
     pos = POSITION_MAP[player["element_type"]]
     if pos not in ["DEF", "MID"]:
         return None
@@ -594,6 +644,7 @@ def defcon_prob(player):
 
 
 def get_last_season_row(player):
+    ensure_loaded()
     key = player["web_name"].lower().strip()
 
     rows = player_hist_df[player_hist_df["player_key"] == key]
@@ -605,6 +656,7 @@ def get_last_season_row(player):
 
 
 def adjusted_xG_xA(player, fixture):
+    ensure_loaded()
     mins = float(player.get("minutes") or 0)
     if mins <= 0:
         return 0, 0, 0, 0
@@ -664,6 +716,7 @@ def adjusted_xG_xA(player, fixture):
 
 
 def xpts_breakdown(player, fixture):
+    ensure_loaded()
     pos = POSITION_MAP[player["element_type"]]
     mins_season = float(player.get("minutes") or 0)
     if mins_season <= 0:
@@ -717,6 +770,7 @@ def xpts_breakdown(player, fixture):
 # PLAYER UTILITIES
 # --------------------------
 def get_player_photo(player):
+    ensure_loaded()
     if not player.get("photo"):
         return "/static/img/placeholder.png"
     photo_id = player["photo"].split(".")[0]
@@ -724,20 +778,25 @@ def get_player_photo(player):
 
 
 def get_player(name, team_name=None):
+    ensure_loaded()
     name = name.lower()
     matches = [p for p in players if name in p["web_name"].lower()]
     if team_name:
-        team_id = fpl_team_name_to_id.get(team_name)
-        matches = [p for p in matches if p["team"] == team_id]
+        team_id = get_team_id_by_name(team_name)
+        if team_id is not None:
+            matches = [p for p in matches if p["team"] == team_id]
+
     return matches[0] if matches else None
 
 
 def get_next_gameweek():
+    ensure_loaded()
     for e in data["events"]:
         if e["is_next"]:
             return e["id"]
 
 def get_active_gameweek():
+    ensure_loaded()
     """
     Returns the GW you should be allowed to view:
     - If a GW is currently live and NOT finished -> return that GW
@@ -764,16 +823,8 @@ def get_active_gameweek():
     return max(e.get("id", 0) for e in data["events"] if e.get("id") is not None)
 
 
-
-def get_player_fixtures(player, gw):
-    team_id = player["team"]
-    return [
-        f for f in fixtures
-        if f["event"] == gw and (f["team_h"] == team_id or f["team_a"] == team_id)
-    ]
-
-
 def fixture_opp_label(player, fixture):
+    ensure_loaded()
     try:
         player_team_id = player.get("team")
         team_h = fixture.get("team_h")
@@ -790,6 +841,7 @@ def fixture_opp_label(player, fixture):
 
 
 def top_xpts_players_for_gw(gw, n=20, min_minutes=1):
+    ensure_loaded()
     results = []
     by_fixture = {}
 
@@ -893,5 +945,3 @@ if __name__ == "__main__":
 
     print("==============================\n")
 
-print(player_hist_df.columns.tolist())
-print(player_hist_df[["player", "xg90", "xa90", "min", "apps"]].head(10))

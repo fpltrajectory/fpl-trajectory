@@ -2,13 +2,7 @@
 {% block body_class %}home-page{% endblock %}
 
 {% block content %}
-<div class="home-intro">
-    <h1>Maximize Your FPL Points with our Expected Points Predictor </h1>
-    <p>
-        FPL Trajectory helps you make informed decisions about using our own Expected Points Model.  
-    </p>
-    <a href="/lineup" class="submit-btn">Plan Your Lineup</a>
-</div>
+
 
 {% if captains and gw %}
 <section class="captain-section">
@@ -243,44 +237,6 @@ Note: This round-up is compiled from the latest managers’ press conferences an
     line-height:1.55;
     color:#eee;
 }   
-/* Your existing intro styles */
-.home-intro {
-    text-align: center;
-    max-width: 820px;
-    margin: 100px auto 60px auto;
-    background:
-        linear-gradient(
-            180deg,
-            rgba(15,20,18,0.85),
-            rgba(6,8,7,0.85)
-        );
-    padding: 44px;
-    border-radius: 22px;
-    border: 1px solid rgba(0,255,135,0.25);
-    box-shadow:
-        0 30px 80px rgba(0,0,0,0.9),
-        inset 0 0 0 1px rgba(255,255,255,0.03);
-}
-
-
-.home-intro h1 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-    color: #00ff87;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
-
-.home-intro p {
-    font-size: 1.2rem;
-    line-height: 1.6;
-    color: #ffffff;
-    margin-bottom: 30px;
-}
-
-.home-intro .submit-btn {
-    font-size: 1.1rem;
-    padding: 12px 30px;
-}
 
 /* ===========================
    CAPTAIN SECTION (DARK THEME)

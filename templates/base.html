@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-    <!-- Privacy-friendly analytics by Plausible -->
-<script async src="https://plausible.io/js/pa-jQzbXLk3xvu_wnWunohEa.js"></script>
-<script>
-  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-  plausible.init()
-</script>
+
 
 <head>
   <meta charset="UTF-8" />
   <title>FPL Trajectory</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-jQzbXLk3xvu_wnWunohEa.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+
   {% block extra_css %}{% endblock %}
   {% block head_extra %}{% endblock %}
 

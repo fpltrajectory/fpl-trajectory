@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <style>
+    #cold-start-message {
+        position: fixed;
+        inset: 0;
+        background: #0b1f13;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        z-index: 9999;
+    }
+    </style>
+
     <title>FPL Trajectory</title>
     <meta charset="UTF-8">
 
@@ -74,6 +88,10 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+    <div id="cold-start-message">
+        Waking server… first load may take ~30 seconds.
+    </div>
+
 
 <nav>
     <a href="/" class="logo-link">
@@ -90,6 +108,12 @@
 <div class="page-content">
     {% block content %}{% endblock %}
 </div>
+<script>
+window.addEventListener("load", () => {
+    const msg = document.getElementById("cold-start-message");
+    if (msg) msg.remove();
+});
+</script>
 
 </body>
 </html>

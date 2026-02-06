@@ -15,6 +15,11 @@ from fpl_module import (
 
 app = Flask(__name__)
 
+@app.get("/health")
+def health():
+    return "ok", 200
+
+
 # ----------------------------
 # TEAM COLORS
 # ----------------------------

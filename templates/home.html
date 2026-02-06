@@ -56,8 +56,112 @@
     </div>
 </section>
 {% endif %}
+<section class="availability-section">
+    <div class="availability-head">
+        <div class="availability-kicker">Press Conference Update</div>
+        <h2 class="availability-title">Player Availability Round-Up</h2>
+        <p class="availability-sub">
+            Compiled from the latest Premier League managers’ press conferences.
+        </p>
+    </div>
+
+    <div class="availability-box">
+<pre>
+AR SENAL
+• Bukayo Saka — hip improving, expected back soon  
+• Martin Ødegaard — days away  
+• Jurrien Timber — fit  
+• Mikel Merino — out ~4 months  
+
+ASTON VILLA
+• Ollie Watkins — available  
+• Amadou Onana — available  
+• Alysson — not ready  
+• McGinn / Tielemans / Kamara / Andrés García — out  
+
+LEEDS UNITED
+• Anton Stach — likely misses next two games  
+• Lukas Nmecha — unlikely Friday, close return  
+• James Justin — available  
+• Jaka Bijol — available  
+• Daniel James — progressing  
+
+NOTTINGHAM FOREST
+• Hudson-Odoi — shoulder knock (decision pending)  
+• Sels — small chance to feature  
+
+MANCHESTER UNITED
+• Mason Mount — close  
+• De Ligt — improving  
+
+TOTTENHAM
+• Van de Ven — available  
+• Spence — touch & go  
+• Romero — fit  
+
+…and more teams covered above.
+</pre>
+    </div>
+</section>
+
+
 
 <style>
+/* ===========================
+   AVAILABILITY SECTION
+=========================== */
+
+.availability-section{
+    max-width: 1100px;
+    margin: 80px auto;
+    padding: 0 18px;
+}
+
+.availability-head{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.availability-kicker{
+    display:inline-block;
+    padding:8px 14px;
+    border-radius:999px;
+    font-weight:1000;
+    font-size:12px;
+    background:rgba(0,255,135,.12);
+    border:1px solid rgba(0,255,135,.35);
+    color:#00ff87;
+}
+
+.availability-title{
+    margin:12px 0 4px;
+    font-size:32px;
+    font-weight:1000;
+    color:white;
+}
+
+.availability-sub{
+    font-size:14px;
+    opacity:.7;
+}
+
+.availability-box{
+    margin-top:20px;
+    background:#050706;
+    border:1px solid rgba(0,255,135,.2);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,.8);
+}
+
+.availability-box pre{
+    white-space:pre-wrap;
+    font-family:inherit;
+    font-size:14px;
+    line-height:1.55;
+    color:#eee;
+}
+   
 /* Your existing intro styles */
 .home-intro {
     text-align: center;

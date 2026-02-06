@@ -9,6 +9,61 @@
   {% block head_extra %}{% endblock %}
 
   <style>
+.pred-loading{
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pred-loading[hidden]{ display:none !important; }
+
+.pred-loading-card{
+  display:flex;
+  align-items:center;
+  gap: 14px;
+
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+  min-width: 280px;
+}
+
+.pred-spinner{
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 3px solid rgba(0,0,0,0.18);
+  border-top-color: rgba(40,167,69,0.95);
+  animation: predSpin .9s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes predSpin{
+  to{ transform: rotate(360deg); }
+}
+
+.pred-loading-title{
+  font-weight: 1000;
+  color: rgba(0,0,0,0.85);
+  font-size: 14px;
+}
+
+.pred-loading-sub{
+  margin-top: 2px;
+  font-weight: 850;
+  color: rgba(0,0,0,0.60);
+  font-size: 12px;
+}
+
     /* ===========================
        COLD START OVERLAY + LOADER
        - Uses DOMContentLoaded (does NOT wait for images/CSS)
@@ -153,6 +208,16 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+    <div id="globalLoading" class="pred-loading" hidden aria-live="polite" aria-busy="true">
+        <div class="pred-loading-card">
+            <div class="pred-spinner" aria-hidden="true"></div>
+            <div class="pred-loading-text">
+                <div class="pred-loading-title">Loading…</div>
+                <div class="pred-loading-sub">Starting the server & fetching data</div>
+            </div>
+        </div>
+    </div>
+
 
   <!-- Cold start overlay -->
   <div id="cold-start-message" hidden>
@@ -185,27 +250,40 @@
     {% block content %}{% endblock %}
   </div>
 
-  <script>
-    (function () {
-      const overlay = document.getElementById("cold-start-message");
-      if (!overlay) return;
+<script>
+(async function () {
+  const cold = document.getElementById("cold-start-message");
+  if (!cold) return;
 
-      // Show overlay immediately on first paint
-      overlay.hidden = false;
+  // Only show if server hasn't responded quickly
+  let shown = false;
+  const showTimer = setTimeout(() => {
+    cold.hidden = false;
+    shown = true;
+  }, 600); // don't flash on fast loads
 
-      const hide = () => { overlay.hidden = true; };
+  const hide = () => { cold.hidden = true; };
 
-      // IMPORTANT:
-      // DOMContentLoaded does NOT wait for images/CSS, so it won't get stuck.
-      document.addEventListener("DOMContentLoaded", hide);
+  try {
+    // poll health until it responds, max 60s
+    const start = Date.now();
+    while (Date.now() - start < 60000) {
+      try {
+        const r = await fetch("/health", { cache: "no-store" });
+        if (r.ok) break;
+      } catch (e) {}
+      await new Promise(res => setTimeout(res, 800));
+    }
+  } finally {
+    clearTimeout(showTimer);
+    if (shown) hide();
+  }
 
-      // Safety fallback: never block longer than 8s even if something is broken
-      setTimeout(hide, 8000);
+  // If user goes back/forward, never leave it stuck
+  window.addEventListener("pageshow", () => hide());
+})();
+</script>
 
-      // If user navigates back/forward (bfcache), don't keep overlay stuck
-      window.addEventListener("pageshow", hide);
-    })();
-  </script>
 
 </body>
 </html>

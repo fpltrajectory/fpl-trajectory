@@ -1,16 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<!-- ✅ Loading overlay (hidden by default) -->
-<div id="predictorLoading" class="pred-loading" hidden aria-live="polite" aria-busy="true">
-  <div class="pred-loading-card">
-    <div class="pred-spinner" aria-hidden="true"></div>
-    <div class="pred-loading-text">
-      <div class="pred-loading-title">Calculating…</div>
-      <div class="pred-loading-sub">Applying filters & building predictions</div>
-    </div>
-  </div>
-</div>
-
 
 <!-- Page two-column layout: left = predictor, right = ad placeholder -->
 <div class="predictor-layout">
@@ -898,34 +887,46 @@ function initDualRange(sliderId, minInputId, maxInputId, bubbleMinId, bubbleMaxI
 
 initDualRange("price-slider", "min_price", "max_price", "priceBubbleMin", "priceBubbleMax");
 
-// ✅ Show loading overlay ONLY when the filters form is actually submitting
+// ✅ Show loading overlay AND force browser to paint it before navigating
 (() => {
   const form = document.querySelector(".filters-search-form");
-  const loading = document.getElementById("predictorLoading");
-  if(!form || !loading) return;
+  const loading = document.getElementById("globalLoading");
+  if (!form || !loading) return;
 
-  form.addEventListener("submit", () => {
-    // Show instantly when user triggers a real request
+  form.addEventListener("submit", (e) => {
+    // Stop instant navigation so the overlay can render
+    e.preventDefault();
+
+    // Show loader immediately
     loading.hidden = false;
 
-    // Optional: prevent double submits
+    // Prevent double submit + change button label
     const btn = form.querySelector('button[type="submit"]');
-    if(btn){
+    if (btn) {
       btn.disabled = true;
       btn.textContent = "Loading…";
     }
+
+    // Let the browser paint the overlay, then submit for real
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        form.submit();
+      });
+    });
   });
 
-  // If user navigates back and page is restored from bfcache, hide loader
+  // If user goes Back and page is restored from bfcache, reset UI
   window.addEventListener("pageshow", () => {
     loading.hidden = true;
+
     const btn = form.querySelector('button[type="submit"]');
-    if(btn){
+    if (btn) {
       btn.disabled = false;
       btn.textContent = "Apply Filters";
     }
   });
 })();
+
 
 </script>
 

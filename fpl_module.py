@@ -78,6 +78,66 @@ players = data["elements"]
 teams = data["teams"]
 fixtures = requests.get("https://fantasy.premierleague.com/api/fixtures/").json()
 
+# --------------------------
+# FAST LOOKUPS + CACHES
+# --------------------------
+from functools import lru_cache
+
+# Index fixtures by (gw, team_id) so get_player_fixtures becomes O(1)
+_FIX_BY_GW_TEAM = {}
+for fx in fixtures:
+    gw = fx.get("event")
+    th = fx.get("team_h")
+    ta = fx.get("team_a")
+    if gw is None or th is None or ta is None:
+        continue
+    _FIX_BY_GW_TEAM.setdefault((gw, th), []).append(fx)
+    _FIX_BY_GW_TEAM.setdefault((gw, ta), []).append(fx)
+
+def get_player_fixtures(player, gw):
+    team_id = player["team"]
+    return _FIX_BY_GW_TEAM.get((gw, team_id), [])
+
+
+@lru_cache(maxsize=4096)
+def fixture_totals_with_bonus(event, team_h, team_a):
+    """
+    Compute total_xPts_with_bonus for ALL players in this fixture once,
+    then reuse it for every player lookup.
+    Returns dict: {player_id: total_xPts_with_bonus}
+    """
+    # find the exact fixture dict
+    fx = None
+    for f in fixtures:
+        if f.get("event") == event and f.get("team_h") == team_h and f.get("team_a") == team_a:
+            fx = f
+            break
+    if not fx:
+        return {}
+
+    # breakdown for everyone in fixture (once)
+    breakdowns_by_id = {}
+    for p in players:
+        if p.get("team") not in (team_h, team_a):
+            continue
+        if float(p.get("minutes") or 0) <= 0:
+            continue
+        bd = xpts_breakdown(p, fx)
+        if bd:
+            breakdowns_by_id[p["id"]] = bd
+
+    if not breakdowns_by_id:
+        return {}
+
+    bonus_by_id = expected_bonus_points_for_fixture(fx, breakdowns_by_id, temp=BONUS_SOFTMAX_TEMP)
+
+    out = {}
+    for pid, bd in breakdowns_by_id.items():
+        out[pid] = round(float(bd["total_xPts"]) + float(bonus_by_id.get(pid, 0.0)), 2)
+
+    return out
+
+
 POSITION_MAP = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 

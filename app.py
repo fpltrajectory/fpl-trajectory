@@ -11,6 +11,7 @@ from fpl_module import (
     xpts_breakdown_with_bonus,
     get_player_photo,
     top_xpts_players_for_gw,
+    fixture_totals_with_bonus,
 )
 
 app = Flask(__name__)
@@ -544,17 +545,20 @@ def predictor():
                 fxs = get_player_fixtures(p, gw)
                 if fxs:
                     fx = fxs[0]
-                    breakdown = xpts_breakdown_with_bonus(p, fx)
-                    if breakdown and breakdown.get("total_xPts_with_bonus") is not None:
-                        try:
-                            xpts_val = float(breakdown["total_xPts_with_bonus"])
-                        except Exception:
-                            xpts_val = None
+                    key_event = fx.get("event")
+                    key_h = fx.get("team_h")
+                    key_a = fx.get("team_a")
+
+                    totals = fixture_totals_with_bonus(key_event, key_h, key_a)
+                    val = totals.get(p["id"])
+                    if val is not None:
+                        xpts_val = float(val)
 
                 gw_points.append({
                     "gw": gw,
                     "xpts": round(xpts_val, 1) if xpts_val is not None else None
                 })
+
 
             vals = [g["xpts"] for g in gw_points if g["xpts"] is not None]
             if not vals:

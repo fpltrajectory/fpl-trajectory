@@ -67,20 +67,40 @@ def api_player_xpts():
     x = ""
 
     fxs = fpl.get_player_fixtures(p, gw)
-    fx = fxs[0] if fxs else None
 
-    if fx:
+    opp_label = "—"
+    x = ""
+
+    if fxs:
+        # Label for DGW
         try:
-            player_team_id = p.get("team")
-            team_h = fx.get("team_h")
-            team_a = fx.get("team_a")
-            if player_team_id is not None and team_h is not None and team_a is not None:
-                is_home = (player_team_id == team_h)
-                opp_id = team_a if is_home else team_h
-                opp_abbr = fpl.team_name(opp_id)[:3].upper()
-                opp_label = f"vs {opp_abbr} ({'H' if is_home else 'A'})"
+            opp_label = fpl.fixture_label_for_gw(p, gw)
         except Exception:
             opp_label = "—"
+
+        # Sum xPts across all fixtures
+        total_x = 0.0
+        got_any = False
+
+        for fx in fxs:
+            try:
+                event = fx.get("event")
+                team_h = fx.get("team_h")
+                team_a = fx.get("team_a")
+
+                totals_map = fpl.fixture_totals_with_bonus(event, team_h, team_a)
+                val = totals_map.get(p["id"])
+                if val is not None:
+                    total_x += float(val)
+                    got_any = True
+            except Exception:
+                continue
+
+        if got_any:
+            x = round(total_x, 2)
+
+
+   
 
         breakdown = fpl.xpts_breakdown_with_bonus(p, fx)
         if breakdown and breakdown.get("total_xPts_with_bonus") is not None:
@@ -346,28 +366,41 @@ def lineup():
             price = (p.get("now_cost", 0) / 10)
             kit = team_color(p.get("team"))
 
-            opp_label = None
-            fxs = fpl.get_player_fixtures(p, gw)
-            fx = fxs[0] if fxs else None
-
-            if fx:
-                try:
-                    player_team_id = p.get("team")
-                    team_h = fx.get("team_h")
-                    team_a = fx.get("team_a")
-                    if player_team_id is not None and team_h is not None and team_a is not None:
-                        is_home = (player_team_id == team_h)
-                        opp_id = team_a if is_home else team_h
-                        opp_abbr = fpl.team_name(opp_id)[:3].upper()
-                        opp_label = f"vs {opp_abbr} ({'H' if is_home else 'A'})"
-                except Exception:
-                    opp_label = None
-
+            opp_label = "—"
             x = ""
-            if fx:
-                breakdown = fpl.xpts_breakdown_with_bonus(p, fx)
-                if breakdown and breakdown.get("total_xPts_with_bonus") is not None:
-                    x = breakdown["total_xPts_with_bonus"]
+
+            fxs = fpl.get_player_fixtures(p, gw)
+
+            if fxs:
+                # 1) Opponent label for single or double fixtures
+                try:
+                    opp_label = fpl.fixture_label_for_gw(p, gw)  # e.g. "vs BRE (A) + vs WOL (A)"
+                except Exception:
+                    opp_label = "—"
+
+                # 2) Sum xPts across ALL fixtures in that GW
+                total_x = 0.0
+                got_any = False
+
+                for fx in fxs:
+                    try:
+                        event = fx.get("event")
+                        team_h = fx.get("team_h")
+                        team_a = fx.get("team_a")
+
+                        totals_map = fpl.fixture_totals_with_bonus(event, team_h, team_a)
+                        val = totals_map.get(p["id"])
+                        if val is not None:
+                            total_x += float(val)
+                            got_any = True
+                    except Exception:
+                        continue
+
+                if got_any:
+                    x = round(total_x, 2)
+
+
+ 
 
             if i <= 10 and x != "":
                 try:

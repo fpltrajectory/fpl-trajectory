@@ -68,17 +68,14 @@ def api_player_xpts():
 
     fxs = fpl.get_player_fixtures(p, gw)
 
-    opp_label = "—"
-    x = ""
-
     if fxs:
-        # Label for DGW
+        # Opponent label for single or double fixtures
         try:
             opp_label = fpl.fixture_label_for_gw(p, gw)
         except Exception:
             opp_label = "—"
 
-        # Sum xPts across all fixtures
+        # Sum xPts across ALL fixtures in that GW
         total_x = 0.0
         got_any = False
 
@@ -98,16 +95,6 @@ def api_player_xpts():
 
         if got_any:
             x = round(total_x, 2)
-
-
-   
-
-        breakdown = fpl.xpts_breakdown_with_bonus(p, fx)
-        if breakdown and breakdown.get("total_xPts_with_bonus") is not None:
-            try:
-                x = float(breakdown["total_xPts_with_bonus"])
-            except Exception:
-                x = breakdown.get("total_xPts_with_bonus")
 
     return jsonify({"player_id": pid, "gw": gw, "opp": opp_label, "xpts": x})
 
@@ -225,22 +212,31 @@ def api_import_team():
         x = ""
 
         fxs = fpl.get_player_fixtures(p, gw)
-        fx = fxs[0] if fxs else None
-        if fx:
+
+        if fxs:
+            # DGW-friendly label
             try:
-                player_team_id = p.get("team")
+                opp_label = fpl.fixture_label_for_gw(p, gw)
+            except Exception:
+                opp_label = "—"
+
+            # DGW-friendly xPts sum
+            total_x = 0.0
+            got_any = False
+
+            for fx in fxs:
+                event = fx.get("event")
                 team_h = fx.get("team_h")
                 team_a = fx.get("team_a")
-                is_home = player_team_id == team_h
-                opp_id = team_a if is_home else team_h
-                opp_abbr = fpl.team_name(opp_id)[:3].upper()
-                opp_label = f"vs {opp_abbr} ({'H' if is_home else 'A'})"
+                totals_map = fpl.fixture_totals_with_bonus(event, team_h, team_a)
+                val = totals_map.get(p["id"])
+                if val is not None:
+                    total_x += float(val)
+                    got_any = True
 
-                breakdown = fpl.xpts_breakdown_with_bonus(p, fx)
-                if breakdown and breakdown.get("total_xPts_with_bonus") is not None:
-                    x = breakdown["total_xPts_with_bonus"]
-            except Exception:
-                pass
+            if got_any:
+                x = round(total_x, 2)
+
 
         slots.append({
             "name": p.get("web_name"),
@@ -479,12 +475,21 @@ def predictor():
             for gw in range(next_gw, next_gw + 5):
                 xpts_val = None
                 fxs = fpl.get_player_fixtures(p, gw)
+
                 if fxs:
-                    fx = fxs[0]
-                    totals = fpl.fixture_totals_with_bonus(fx.get("event"), fx.get("team_h"), fx.get("team_a"))
-                    val = totals.get(p["id"])
-                    if val is not None:
-                        xpts_val = float(val)
+                    total_x = 0.0
+                    got_any = False
+
+                    for fx in fxs:
+                        totals = fpl.fixture_totals_with_bonus(fx.get("event"), fx.get("team_h"), fx.get("team_a"))
+                        val = totals.get(p["id"])
+                        if val is not None:
+                            total_x += float(val)
+                            got_any = True
+
+                    if got_any:
+                        xpts_val = total_x
+
 
                 gw_points.append({"gw": gw, "xpts": round(xpts_val, 1) if xpts_val is not None else None})
 

@@ -189,10 +189,11 @@ POSITION_MAP = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 
 def fixture_label_for_gw(player, gw):
-    """Nice label: 'vs ABC (H) + vs DEF (A)' for DGWs."""
+    """Nice label: 'ABC (H) + DEF (A)' for DGWs."""
     fxs = get_player_fixtures(player, gw)
     if not fxs:
         return "—"
+
     parts = []
     for fx in fxs:
         player_team_id = player.get("team")
@@ -208,12 +209,9 @@ def fixture_label_for_gw(player, gw):
 
         abbr = team_name(opp_id)[:3].upper()
 
-        # NO "vs" anymore — keep it compact
-        # Make the team abbreviation bold in HTML
-        parts.append(f"<strong>{abbr}</strong> <strong>({ha})</strong>")
+        # team abbrev bold + H/A bold (and class for styling)
+        parts.append(f"<strong>{abbr}</strong> <strong class='ha'>({ha})</strong>")
 
-
-    # KEEP the plus sign exactly
     return " + ".join(parts)
 
 

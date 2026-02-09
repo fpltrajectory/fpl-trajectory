@@ -42,11 +42,10 @@ TEAM_COLORS_BY_NAME = {
 }
 
 
-def team_color_by_name(name: str) -> str:
-    if not name:
-        return "#d9d9d9"
-    key = TEAM_NAME_ALIASES.get(name.strip(), name.strip())
-    return TEAM_COLORS_CANON.get(key, "#d9d9d9")
+def team_color(team_id):
+    ensure_loaded()
+    name = team_name(team_id)
+    return TEAM_COLORS_BY_NAME.get(name, "#d9d9d9")
 
 
 # --------------------------

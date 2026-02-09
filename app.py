@@ -12,31 +12,8 @@ def health():
 # ----------------------------
 # TEAM COLORS
 # ----------------------------
-TEAM_COLORS = {
-    1:  "#c8102e",  # Arsenal
-    2:  "#6cabdd",  # Aston Villa
-    3:  "#1b458f",  # Bournemouth
-    4:  "#e30613",  # Brentford
-    5:  "#0057b8",  # Brighton
-    6:  "#034694",  # Chelsea
-    7:  "#1f3c88",  # Crystal Palace
-    8:  "#003399",  # Everton
-    9:  "#000000",  # Fulham
-    10: "#e03a3e",  # Liverpool
-    11: "#6cabdd",  # Manchester City
-    12: "#da291c",  # Manchester United
-    13: "#241f20",  # Newcastle United
-    14: "#ffcd00",  # Nottingham Forest
-    15: "#d71920",  # Tottenham
-    16: "#7a263a",  # West Ham
-    17: "#fdb913",  # Wolves
-    18: "#1c2c5b",  # Leeds United
-    19: "#eb172b",  # Sunderland
-    20: "#004170",  # Burnley
-}
-
 def team_color(team_id):
-    return TEAM_COLORS.get(team_id, "#d9d9d9")
+    return fpl.team_color(team_id)
 
 
 # ----------------------------

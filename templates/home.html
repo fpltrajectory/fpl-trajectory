@@ -32,7 +32,7 @@
 
                     <div class="player-meta">
                         <span class="meta-pill">{{ p.position }}</span>
-                        <span class="meta-pill opp">{{ p.opp }}</span>
+                        <span class="meta-pill opp">{{ p.opp|safe }}</span>
                     </div>
 
                     <div class="xpts-row">
@@ -429,7 +429,14 @@ Note: This round-up is compiled from the latest managers’ press conferences an
     border-color: rgba(0,255,135,0.35);
     color: #00ff87;
 }
-
+.meta-pill.opp strong.ha{
+  font-weight: 1000;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(0,255,135,0.35);
+  margin-left: 4px;
+}
 /* xPts display */
 .xpts-row{
     margin-top: 16px;

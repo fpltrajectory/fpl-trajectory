@@ -5,28 +5,32 @@ import requests
 import math
 from scipy.stats import norm
 
-TEAM_COLORS = {
-    1:  "#c8102e",  # Arsenal
-    2:  "#6cabdd",  # Aston Villa
-    3:  "#1b458f",  # Bournemouth
-    4:  "#e30613",  # Brentford
-    5:  "#0057b8",  # Brighton
-    6:  "#034694",  # Chelsea
-    7:  "#1f3c88",  # Crystal Palace
-    8:  "#003399",  # Everton
-    9:  "#000000",  # Fulham
-    10: "#e03a3e",  # Liverpool
-    11: "#6cabdd",  # Manchester City
-    12: "#da291c",  # Manchester United
-    13: "#241f20",  # Newcastle United
-    14: "#ffcd00",  # Nottingham Forest
-    15: "#d71920",  # Tottenham
-    16: "#7a263a",  # West Ham
-    17: "#fdb913",  # Wolves
-    18: "#1c2c5b",  # Leeds United
-    19: "#eb172b",  # Sunderland
-    20: "#004170",  # Burnley
+TEAM_COLORS_BY_NAME = {
+    "Arsenal": "#c8102e",
+    "Aston Villa": "#6cabdd",
+    "Bournemouth": "#1b458f",
+    "Brentford": "#e30613",
+    "Brighton": "#0057b8",
+    "Chelsea": "#034694",
+    "Crystal Palace": "#1f3c88",
+    "Everton": "#003399",
+    "Fulham": "#000000",
+    "Liverpool": "#e03a3e",
+    "Manchester City": "#6cabdd",
+    "Manchester United": "#da291c",
+    "Newcastle United": "#241f20",
+    "Nottingham Forest": "#ffcd00",
+    "Tottenham Hotspur": "#d71920",
+    "West Ham United": "#7a263a",
+    "Wolverhampton Wanderers": "#fdb913",
+    # add promoted teams etc as needed
 }
+
+def team_color(team_id):
+    ensure_loaded()
+    name = team_name(team_id)
+    return TEAM_COLORS_BY_NAME.get(name, "#d9d9d9")
+
 
 # --------------------------
 # LAZY LOADED GLOBALS

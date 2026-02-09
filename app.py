@@ -35,14 +35,6 @@ def home():
 
     return render_template("home.html", gw=gw, captains=captains)
 
-@app.route("/teams")
-def teams_page():
-    return render_template("teams.html")
-
-@app.route("/stats")
-def stats_page():
-    return render_template("stats.html")
-
 
 # ----------------------------
 # API: Players xPts (JSON)

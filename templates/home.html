@@ -60,124 +60,116 @@
     </div>
 
     <div class="availability-box">
-<pre>
-AR S E N A L
-• Bukayo Saka — hip improving, expected back soon
-• Martin Ødegaard — “a matter of days”
-• Jurrien Timber — fit/available
-• Max Dowman — not trained yet, “still a few weeks”
-• Mikel Merino — out ~4 months
 
-A S T O N  V I L L A
-• Ollie Watkins — back fit and available
-• Amadou Onana — fit and available
-• Alysson — back in training but not ready yet
-• John McGinn — out (long-term)
-• Youri Tielemans — out (long-term)
-• Boubacar Kamara — out (long-term)
-• Andrés García — out
+  {# --- Press conference data (edit here easily) --- #}
+  {% set updates = [
+    {
+      "team": "Newcastle",
+      "bullets": [
+        {"status":"doubt", "text":"Anthony Gordon — assessed today, hopeful of improvement"},
+        {"status":"doubt", "text":"Lewis Miley — dead leg lingering, being monitored"},
+        {"status":"out",   "text":"Joelinton — ruled out"}
+      ]
+    },
+    {
+      "team": "Leeds",
+      "bullets": [
+        {"status":"fit",   "text":"Dominic Calvert-Lewin — illness, expected available"},
+        {"status":"fit",   "text":"Ilia Gruev — knock, should be available"},
+        {"status":"out",   "text":"Pascal Struijk — out (hip flexor)"},
+        {"status":"back",  "text":"Anton Stach — targeting Villa (Feb 21)"}
+      ]
+    },
+    {
+      "team": "West Ham",
+      "bullets": [
+        {"status":"unknown","text":"Manager confirmed multiple players out but refused to name names (expect late surprises)"}
+      ]
+    },
+    {
+      "team": "Manchester United",
+      "bullets": [
+        {"status":"out",   "text":"Mason Mount — out vs West Ham, expected back vs Everton"},
+        {"status":"out",   "text":"Matthijs de Ligt — out, could return for Everton"}
+      ]
+    },
+    {
+      "team": "Tottenham",
+      "bullets": [
+        {"status":"out",   "text":"Destiny Udogie — out 4–5 weeks (hamstring)"},
+        {"status":"out",   "text":"Cristian Romero — suspended"},
+        {"status":"back",  "text":"Djed Spence — back"},
+        {"status":"fit",   "text":"Radu Dragusin — fit again"}
+      ]
+    },
+    {
+      "team": "Chelsea",
+      "bullets": [
+        {"status":"fit",   "text":"Reece James — fit (slightly unwell)"},
+        {"status":"fit",   "text":"Cole Palmer — available"},
+        {"status":"fit",   "text":"Andrey Santos — ankle swelling cleared"},
+        {"status":"back",  "text":"Tosin Adarabioyo — back in training"},
+        {"status":"back",  "text":"Romeo Lavia — easing back with structured plan"}
+      ]
+    },
+    {
+      "team": "Everton",
+      "bullets": [
+        {"status":"doubt", "text":"Jarrad Branthwaite — building minutes, could start"},
+        {"status":"back",  "text":"Tyrique George — could make home debut"},
+        {"status":"out",   "text":"Jack Grealish — still out (stress fracture)"},
+        {"status":"fit",   "text":"Most others fit; Dewsbury-Hall + Alcaraz back around the squad"}
+      ]
+    },
+    {
+      "team": "Bournemouth",
+      "bullets": [
+        {"status":"back",  "text":"Tyler Adams — returned to team training, close to return"},
+        {"status":"back",  "text":"David Brooks — building fitness"},
+        {"status":"doubt", "text":"Marcus Tavernier — progressing, could return in coming weeks"},
+        {"status":"fit",   "text":"No fresh injuries reported"}
+      ]
+    }
+  ] %}
 
-B O U R N E M O U T H
-• David Brooks — will be assessed, could return
-• Squad — otherwise unchanged from last match (per Iraola)
-
-B R E N T F O R D
-• Kaye Furo — available for selection
-• Reiss Nelson — back in contention
-• Kevin Schade — suspended (next two league games + cup)
-• Nathan Collins — available (had stitches, was managed last match)
-
-B R I G H T O N
-• Diego Gomez — back and available
-• Mats Wieffer — close to returning
-• Yasin Ayari — out (shoulder issue)
-
-B U R N L E Y
-• James Ward-Prowse — ineligible vs West Ham (cannot play parent club)
-• No fresh injuries reported; “longer-term boys” remain out
-
-C H E L S E A
-• Cole Palmer — fit to play 90
-• Estevao Willian — fit to play 90
-• Reece James — to be assessed (decision after training)
-• Pedro Neto — to be assessed (decision after training)
-• Jamie Gittens — hamstring tear, out for a spell
-
-C R Y S T A L  P A L A C E
-• Daichi Kamada — available
-• Borna Sosa — back
-• Adam Wharton — back from suspension
-• Justin Devenny — close; Sunday may be too soon (Burnley midweek likely)
-• Cheick Doucouré — out (long-term)
-• Eddie Nketiah — not ready
-• Jean-Philippe Mateta — will miss Brighton + Burnley (knee situation; decision pending)
-
-E V E R T O N
-• Vitaliy Mykolenko — back in training, available
-• Squad — otherwise fine (per Moyes)
-
-F U L H A M
-• Oscar Bobb — out (thigh)
-• Rodrigo Muniz — to be assessed (possible involvement)
-• Sasa Lukic — unlikely back for ~2+ weeks (thigh)
-
-L E E D S  U N I T E D
-• Anton Stach — likely misses next two games (hip problem)
-• Lukas Nmecha — not back in team training; unlikely for Friday but “not too far away”
-• James Justin — back in training, available
-• Jaka Bijol — back in training, available
-• Daniel James — making progress
-
-L I V E R P O O L
-• Joe Gomez — may feature, unlikely to start
-• Jeremie Frimpong — unavailable
-
-M A N C H E S T E R  C I T Y
-• Rúben Dias — back; minutes possible
-• John Stones — back in training; “step by step”
-• Bernardo Silva — doubt; to be assessed
-
-M A N C H E S T E R  U N I T E D
-• Mason Mount — “not too far away”
-• Matthijs de Ligt — improving, a bit soon but progressing
-
-N E W C A S T L E  U N I T E D
-• Anthony Gordon — out this weekend; expected back “pretty soon”
-• Bruno Guimarães — trained; likely returns to squad
-• Lewis Miley — awaiting update
-
-N O T T I N G H A M  F O R E S T
-• Callum Hudson-Odoi — shoulder knock; decision pending (next 36 hours)
-• Matz Sels — “rough chance” to be available; being assessed
-
-S U N D E R L A N D
-• Granit Xhaka — out (ankle injury)
-• Nilson Angulo — could be available (arriving, fit, needs to connect with squad)
-
-T O T T E N H A M  H O T S P U R
-• Micky van de Ven — trained, available
-• Djed Spence — getting closer; “touch and go”
-• Cristian Romero — fine/available
-• Kevin Danso — “hopefully not too long”; more info expected this week
-• Richarlison — “hopefully back soon”
-• Mohammed Kudus — expected back later (timing not confirmed)
-
-W E S T  H A M  U N I T E D
-• Jean-Clair Todibo — suspended (red card)
-• Axel Disasi — physically in a good place; readiness being assessed
-• Squad — otherwise “hopefully” available; some monitored issues
-
-W O L V E S
-• Angel Gomes — in line for debut
-• Adam Armstrong — in line for debut
-• Ladislav Krejci — available after flu
-• Emmanuel Agbadou — close to leaving (not a fitness issue)
-• Jhon Arias — expected to depart soon (not a fitness issue)
-
-Note: This round-up is compiled from the latest managers’ press conferences and club updates.
-</pre>
-
+  <div class="availability-meta">
+    <div class="meta-pill2">All listed teams play Tuesday</div>
+    <div class="meta-note">
+      Other clubs haven’t held press conferences yet — this section will be updated as they drop.
     </div>
+  </div>
+
+  <div class="availability-grid">
+    {% for t in updates %}
+      <details class="team-card" open>
+        <summary class="team-head">
+          <div class="team-name">{{ t.team }}</div>
+          <div class="team-chips">
+            {# quick count chips #}
+            {% set out_n = (t.bullets | selectattr("status","equalto","out") | list | length) %}
+            {% set doubt_n = (t.bullets | selectattr("status","equalto","doubt") | list | length) %}
+            {% if out_n %}<span class="chip2 out">{{ out_n }} OUT</span>{% endif %}
+            {% if doubt_n %}<span class="chip2 doubt">{{ doubt_n }} DOUBT</span>{% endif %}
+            <span class="caret">▾</span>
+          </div>
+        </summary>
+
+        <div class="team-body">
+          <ul class="team-list">
+            {% for b in t.bullets %}
+              <li class="team-item">
+                <span class="status {{ b.status }}">{{ b.status|upper }}</span>
+                <span class="item-text">{{ b.text }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+</div>
+
 </section>
 
 
@@ -186,6 +178,184 @@ Note: This round-up is compiled from the latest managers’ press conferences an
 /* ===========================
    AVAILABILITY SECTION
 =========================== */
+/* ===========================
+   AVAILABILITY UI (CARDS)
+=========================== */
+
+.availability-meta{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0 18px;
+}
+
+.meta-pill2{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 1000;
+  font-size: 12px;
+  background: rgba(0,255,135,.12);
+  border: 1px solid rgba(0,255,135,.35);
+  color: #00ff87;
+}
+
+.meta-note{
+  font-size: 12px;
+  font-weight: 850;
+  opacity: .75;
+  color: rgba(255,255,255,.85);
+}
+
+.availability-grid{
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 10px;
+}
+
+@media (max-width: 900px){
+  .availability-grid{ grid-template-columns: 1fr; }
+}
+
+.team-card{
+  background: linear-gradient(180deg, rgba(10,12,11,.92), rgba(4,6,5,.92));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 18px;
+  overflow:hidden;
+  box-shadow: 0 18px 40px rgba(0,0,0,.65);
+}
+
+.team-head{
+  list-style:none;
+  cursor:pointer;
+  padding: 12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.team-head::-webkit-details-marker{ display:none; }
+
+.team-name{
+  font-size: 15px;
+  font-weight: 1000;
+  color: rgba(255,255,255,.95);
+  letter-spacing: -0.2px;
+}
+
+.team-chips{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+
+.caret{
+  opacity: .55;
+  font-weight: 1000;
+  transform: translateY(-1px);
+}
+
+.team-card[open] .caret{ opacity: .9; }
+
+.chip2{
+  font-size: 11px;
+  font-weight: 1000;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.88);
+}
+
+.chip2.out{
+  border-color: rgba(255,80,80,.35);
+  background: rgba(255,80,80,.10);
+  color: rgba(255,140,140,.95);
+}
+
+.chip2.doubt{
+  border-color: rgba(255,193,7,.35);
+  background: rgba(255,193,7,.10);
+  color: rgba(255,220,120,.95);
+}
+
+.team-body{
+  padding: 12px 14px 14px;
+}
+
+.team-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.team-item{
+  display:flex;
+  align-items:flex-start;
+  gap: 10px;
+}
+
+.status{
+  flex: 0 0 auto;
+  min-width: 70px;
+  text-align:center;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.85);
+}
+
+.status.out{
+  border-color: rgba(255,80,80,.35);
+  background: rgba(255,80,80,.10);
+  color: rgba(255,140,140,.95);
+}
+
+.status.doubt{
+  border-color: rgba(255,193,7,.35);
+  background: rgba(255,193,7,.10);
+  color: rgba(255,220,120,.95);
+}
+
+.status.fit{
+  border-color: rgba(0,255,135,.35);
+  background: rgba(0,255,135,.10);
+  color: #00ff87;
+}
+
+.status.back{
+  border-color: rgba(120,180,255,.35);
+  background: rgba(120,180,255,.10);
+  color: rgba(180,220,255,.95);
+}
+
+.status.unknown{
+  border-color: rgba(200,200,200,.25);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.75);
+}
+
+.item-text{
+  font-size: 12.5px;
+  font-weight: 850;
+  line-height: 1.35;
+  color: rgba(255,255,255,.92);
+  opacity: .92;
+}
 
 .availability-section{
     max-width: 1100px;

@@ -6,6 +6,7 @@ import math
 from scipy.stats import norm
 
 TEAM_COLORS_BY_NAME = {
+    # Core PL names (common site/CSV forms)
     "Arsenal": "#c8102e",
     "Aston Villa": "#6cabdd",
     "Bournemouth": "#1b458f",
@@ -16,20 +17,36 @@ TEAM_COLORS_BY_NAME = {
     "Everton": "#003399",
     "Fulham": "#000000",
     "Liverpool": "#e03a3e",
+    "Man City": "#6cabdd",
     "Manchester City": "#6cabdd",
+    "Man United": "#da291c",
     "Manchester United": "#da291c",
+    "Newcastle": "#241f20",
     "Newcastle United": "#241f20",
     "Nottingham Forest": "#ffcd00",
+    "Nott'm Forest": "#ffcd00",
+    "Spurs": "#d71920",
+    "Tottenham": "#d71920",
     "Tottenham Hotspur": "#d71920",
+    "West Ham": "#7a263a",
     "West Ham United": "#7a263a",
+    "Wolves": "#fdb913",
     "Wolverhampton Wanderers": "#fdb913",
-    # add promoted teams etc as needed
+
+    # Promoted (your season)
+    "Leeds": "#1c2c5b",
+    "Leeds United": "#1c2c5b",
+    "Sunderland": "#eb172b",
+    "Sunderland AFC": "#eb172b",
+    "Burnley": "#004170",
 }
 
-def team_color(team_id):
-    ensure_loaded()
-    name = team_name(team_id)
-    return TEAM_COLORS_BY_NAME.get(name, "#d9d9d9")
+
+def team_color_by_name(name: str) -> str:
+    if not name:
+        return "#d9d9d9"
+    key = TEAM_NAME_ALIASES.get(name.strip(), name.strip())
+    return TEAM_COLORS_CANON.get(key, "#d9d9d9")
 
 
 # --------------------------

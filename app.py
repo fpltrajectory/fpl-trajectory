@@ -46,7 +46,7 @@ def team_color(team_id):
 def home():
     fpl.ensure_loaded()
 
-    gw = fpl.get_next_gameweek()
+    gw = fpl.get_active_gameweek()
     captains = fpl.top_xpts_players_for_gw(gw, n=3, min_minutes=1)
 
     for c in captains:

@@ -194,8 +194,28 @@ def fixture_label_for_gw(player, gw):
     fxs = get_player_fixtures(player, gw)
     if not fxs:
         return "—"
-    parts = [fixture_opp_label(player, fx) for fx in fxs]
+    parts = []
+    for fx in fxs:
+        player_team_id = player.get("team")
+        team_h = fx.get("team_h")
+        team_a = fx.get("team_a")
+
+        if player_team_id == team_h:
+            opp_id = team_a
+            ha = "H"
+        else:
+            opp_id = team_h
+            ha = "A"
+
+        abbr = team_name(opp_id)[:3].upper()
+
+        # NO "vs" anymore — keep it compact
+        # Make the team abbreviation bold in HTML
+        parts.append(f"<strong>{abbr}</strong> ({ha})")
+
+    # KEEP the plus sign exactly
     return " + ".join(parts)
+
 
 
 def team_name(team_id):

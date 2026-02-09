@@ -210,7 +210,8 @@ def fixture_label_for_gw(player, gw):
 
         # NO "vs" anymore — keep it compact
         # Make the team abbreviation bold in HTML
-        parts.append(f"<strong>{abbr}</strong> ({ha})")
+        parts.append(f"<strong>{abbr}</strong> <strong>({ha})</strong>")
+
 
     # KEEP the plus sign exactly
     return " + ".join(parts)

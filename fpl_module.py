@@ -168,6 +168,15 @@ def fixture_totals_with_bonus(event, team_h, team_a):
 POSITION_MAP = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 
+def fixture_label_for_gw(player, gw):
+    """Nice label: 'vs ABC (H) + vs DEF (A)' for DGWs."""
+    fxs = get_player_fixtures(player, gw)
+    if not fxs:
+        return "—"
+    parts = [fixture_opp_label(player, fx) for fx in fxs]
+    return " + ".join(parts)
+
+
 def team_name(team_id):
     ensure_loaded()
     return next(t["name"] for t in teams if t["id"] == team_id)
@@ -843,7 +852,6 @@ def fixture_opp_label(player, fixture):
 def top_xpts_players_for_gw(gw, n=20, min_minutes=1):
     ensure_loaded()
     results = []
-    by_fixture = {}
 
     for p in players:
         try:
@@ -854,29 +862,25 @@ def top_xpts_players_for_gw(gw, n=20, min_minutes=1):
             fxs = get_player_fixtures(p, gw)
             if not fxs:
                 continue
-            fx = fxs[0]
 
-            bd = xpts_breakdown(p, fx)
-            if not bd:
-                continue
+            total = 0.0
+            breakdowns = []
 
-            fx_key = (fx.get("event"), fx.get("team_h"), fx.get("team_a"))
-            by_fixture.setdefault(fx_key, []).append({"player_obj": p, "fixture": fx, "breakdown": bd})
-        except Exception:
-            continue
+            for fx in fxs:
+                event = fx.get("event")
+                team_h = fx.get("team_h")
+                team_a = fx.get("team_a")
 
-    for fx_key, entries in by_fixture.items():
-        fx = entries[0]["fixture"]
-        breakdowns_by_id = {e["player_obj"]["id"]: e["breakdown"] for e in entries}
+                # fast cached: totals for every player in the fixture
+                totals_map = fixture_totals_with_bonus(event, team_h, team_a)
+                total += float(totals_map.get(p["id"], 0.0))
 
-        # NEW: tuned bonus calculation (lower temp + tendency)
-        bonus_by_id = expected_bonus_points_for_fixture(fx, breakdowns_by_id, temp=BONUS_SOFTMAX_TEMP)
-
-        for e in entries:
-            p = e["player_obj"]
-            bd = e["breakdown"]
-            bonus = float(bonus_by_id.get(p["id"], 0.0))
-            total_with_bonus = float(bd["total_xPts"]) + bonus
+                # optional: keep per-fixture breakdown for debugging/UI later
+                bd = xpts_breakdown(p, fx)
+                if bd:
+                    bd = dict(bd)
+                    bd["opp"] = fixture_opp_label(p, fx)
+                    breakdowns.append(bd)
 
             results.append(
                 {
@@ -887,11 +891,14 @@ def top_xpts_players_for_gw(gw, n=20, min_minutes=1):
                     "position": POSITION_MAP[p["element_type"]],
                     "price": (p.get("now_cost", 0) / 10),
                     "owned_by": float(p.get("selected_by_percent") or 0.0),
-                    "opp": fixture_opp_label(p, fx),
-                    "breakdown": {**bd, "xBonus": round(bonus, 2)},
-                    "total_xPts": round(total_with_bonus, 2),
+                    "opp": fixture_label_for_gw(p, gw),
+                    "breakdowns": breakdowns,
+                    "total_xPts": round(total, 2),
                 }
             )
+
+        except Exception:
+            continue
 
     results.sort(key=lambda r: r["total_xPts"], reverse=True)
     return results[: max(1, int(n))]

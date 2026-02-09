@@ -2781,7 +2781,7 @@ function buildSlotEl(index, intendedPos){
   if(priceEl) priceEl.textContent = priceText;
 
   el.querySelector(".posTag").textContent = (getSlotPos(s) || (index===0 ? "GK" : "—"));
-  el.querySelector(".fixture").textContent = s.opp || "—";
+  el.querySelector(".fixture").innerHTML = s.opp || "—";
   el.querySelector(".xval").textContent = (s.xpts !== "" && s.xpts != null) ? String(s.xpts) : "—";
 
   if(selectedSlotIndex === index) el.classList.add("selected");
